@@ -3,7 +3,9 @@
 
 // netpbm.h
 // Functions for reading and writing binary PBM, PGM, and PPM image files.
+// V2.2A by Andrew Eckel, based on...
 // V2.2 by Marc Pomplun on 10/19/2013
+// This version has the "i" channel removed. It is more efficient for PPM files but it no longer supports PBM, PGM.
 
 #define SQR(x) ((x)*(x))
 #define PI 3.14159265358979323846
@@ -19,7 +21,7 @@
 // average of R, G, and B when creating or reading a new image.
 typedef struct
 {
-	unsigned char r, g, b, i;
+	unsigned char r, g, b;
 } Pixel;
 
 // Notice that the pixel map uses "matrix notation," i.e., map[i][j] refers to
@@ -38,8 +40,8 @@ typedef struct
 	double **map;
 } Matrix;
 
-// The three supported file types using 1, 8, and 24 bits per pixel, respectively.
-typedef enum format {PBM, PGM, PPM} Format;
+// The ONE supported file type using  24 bits per pixel!!!!
+typedef enum format {PPM} Format;
 
 // Create a new image of the given size and fill it with white pixels.
 // When you don't need the image anymore, don't forget to free its memory using deleteImage.
@@ -84,30 +86,30 @@ Image matrix2Image(Matrix mx, int scale, double gamma);
 // Set color for pixel (vPos, hPos) in image img.
 // If r, g, b, or i are set to NO_CHANGE, the corresponding color channels are left unchanged in img.
 // If they are set to INVERT, the corresponding channels are inverted, i.e., set to 255 minus their original value
-void setPixel(Image img, int vPos, int hPos, int r, int g, int b, int i);
+void setPixel(Image img, int vPos, int hPos, int r, int g, int b);
 
 // Draw filled ellipse in image img centered at (vCenter, hCenter) with radii vRadius and hRadius.
 // Radius (0, 0) will draw an individual pixel. For setting the r, g, b, and i color values, see setPixel function.
-void filledEllipse(Image img, int vCenter, int hCenter, int vRadius, int hRadius, int r, int g, int b, int i);
+void filledEllipse(Image img, int vCenter, int hCenter, int vRadius, int hRadius, int r, int g, int b);
 
 // Draw filled rectangle in image img with opposite edges (v1, h1) and (v2, h2).
 // For setting the r, g, b, and i color values, see setPixel function.
-void filledRectangle(Image img, int v1, int h1, int v2, int h2, int r, int g, int b, int i);
+void filledRectangle(Image img, int v1, int h1, int v2, int h2, int r, int g, int b);
 
 // Draw straight line in image img between (v1, h1) and (v2, h2) with a given width, dash pattern, and color.
 // Width 0 indicates single-pixel width. The inputs dash and gap determine the length in pixels of the dashes
 // and the gaps between them, resp. Use 0 for either input to draw a solid line.
 // For setting the r, g, b, and i color values, see setPixel function.
-void line(Image img, int v1, int h1, int v2, int h2, int width, int dash, int gap, int r, int g, int b, int i);
+void line(Image img, int v1, int h1, int v2, int h2, int width, int dash, int gap, int r, int g, int b);
 
 // Draw rectangle in image img with opposite corners (v1, h1) and (v2, h2) with a given width, dash pattern, and color.
 // Inputs are otherwise identical to the line function.
-void rectangle(Image img, int v1, int h1, int v2, int h2, int width, int dash, int gap, int r, int g, int b, int i);
+void rectangle(Image img, int v1, int h1, int v2, int h2, int width, int dash, int gap, int r, int g, int b);
 
 // Draw ellipse in image img centered at (vCenter, hCenter) and radii (vRadius, hRadius) with a given width, dash pattern, and color.
 // Width 0 indicates single-pixel width. The inputs dash and gap determine the length in pixels of the dashes
 // and the gaps between them, resp. Use 0 for either input to draw a solid line.
 // For setting the r, g, b, and i color values, see setPixel function.
-void ellipse(Image img, int vCenter, int hCenter, int vRadius, int hRadius, int width, int dash, int gap, int r, int g, int b, int i);
+void ellipse(Image img, int vCenter, int hCenter, int vRadius, int hRadius, int width, int dash, int gap, int r, int g, int b);
 
 #endif // NETPBM

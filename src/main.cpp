@@ -8,6 +8,7 @@
 #include <math.h> //round
 #include <cmath> //abs
 #include <stdlib.h>  //for malloc
+#include <algorithm>    // std::max
 
 #include "netpbm.h"
 //#include "ini.h"  //not yet used
@@ -22,35 +23,110 @@ void writeImage(Image img, std::string path_and_filename){
 }
 
 void copyPixel(Pixel* to, Pixel from){
-	//Don't bother with the intensity layer i.
 	to->r = from.r;
 	to->g = from.g;
 	to->b = from.b;
 }
 
 void copyPixel(Pixel* to, Pixel* from){
-	//Don't bother with the intensity layer i.
 	to->r = from->r;
 	to->g = from->g;
 	to->b = from->b;
 }
 
-int difference(Pixel a, Pixel b){
+double difference_Regular(Pixel p1, Pixel p2){
+	//Possible range: 0 to 512
+
 	//Green counts 2x as much.
-	return std::abs(((int) a.r) - b.r) + 2 * std::abs(((int) a.g) - b.g) + std::abs(((int) a.b) - b.b);
+	//return std::abs(((int) p1.r) - p2.r) + 2 * std::abs(((int) p1.g) - p2.g) + std::abs(((int) p1.b) - p2.b);
+	//"harder math version": requires doubles instead of ints as outputs. I like this version SLIGHTLY better.
+	return sqrt(pow(p1.r - p2.r, 2.0) + 2 * pow(p1.g - p2.g, 2.0) + pow(p1.b - p2.b, 2.0));
+}
+
+double difference_ColorRatio(Pixel p1, Pixel p2){
+	//Possible range: 0 to 440
+
+	//The "max" thing is there to avoid a divide-by-zero.
+	double p1_RtoG = (1.0 * p1.r) / std::max((int) p1.g, 1);
+	double p1_RtoB = (1.0 * p1.r) / std::max((int) p1.b, 1);
+	double p1_GtoB = (1.0 * p1.g) / std::max((int) p1.b, 1);
+
+	double p2_RtoG = (1.0 * p2.r) / std::max((int) p2.g, 1);
+	double p2_RtoB = (1.0 * p2.r) / std::max((int) p2.b, 1);
+	double p2_GtoB = (1.0 * p2.g) / std::max((int) p2.b, 1);
+
+	//"Color difference difference version"!!!!!!
+	// double p1_RtoG = (1.0 * p1.r) - p1.g;
+	// double p1_RtoB = (1.0 * p1.r) - p1.b;
+	// double p1_GtoB = (1.0 * p1.g) - p1.b;
+
+	// double p2_RtoG = (1.0 * p2.r) - p2.g;
+	// double p2_RtoB = (1.0 * p2.r) - p2.b;
+	// double p2_GtoB = (1.0 * p2.g) - p2.b;
+
+
+	return sqrt(pow(p1_RtoG - p2_RtoG, 2.0) + 2 * pow(p1_RtoB - p2_RtoB, 2.0) + pow(p1_GtoB - p2_GtoB, 2.0)); //original
+	//return sqrt(pow(p1_RtoG - p2_RtoG, 2.0) + 2 * pow(p1_RtoB - p2_RtoB, 2.0) + pow(p1_GtoB - p2_GtoB, 2.0)); //green counts twice
+	//return sqrt(0.299*pow(p1_RtoG - p2_RtoG, 2.0) + 0.587*pow(p1_RtoB - p2_RtoB, 2.0) + 0.144*pow(p1_GtoB - p2_GtoB, 2.0));  //"brightness scores" version
+	//return std::abs(p1_RtoG - p2_RtoG) + abs(p1_RtoB - p2_RtoB) + abs(p1_GtoB - p2_GtoB);   //"easier math" version: runtime difference is miniscule, and results look NOTICEABLY worse!!
+}
+
+double perceived_Brightness(Pixel color){
+  //possible range: 0 to 255 (really!)
+  //given a Pixel, returns the perceived brightness of the color
+  //on a scale from 0 to 255.
+
+  //The single line of code here is by me (Andrew Eckel) but the formula used
+  //was created by Darel Rex Finley, based on his attempts to
+  //reverse-engineer Photoshop’s RGB-to-Greyscale mode conversion.
+  //http://alienryderflex.com/hsp.html
+
+  //The version in the ErrorSpreader returns an int, but this version returns a double.
+
+  int r = (int)(color.r);
+  int g = (int)(color.g);
+  int b = (int)(color.b);
+
+  //pow() cannot be used here, because pow on a non-tiny number just returns
+  //something stupid called HUGEVAL.   <---- wait what???
+  return sqrt(0.299*r*r + 0.587*g*g + 0.114*b*b);
+}
+
+double difference_PerceivedBrightness(Pixel p1, Pixel p2){
+	//Possible range: 0 to 255.
+	return std::abs(perceived_Brightness(p1) - perceived_Brightness(p2));
+}
+
+double difference_Combined(Pixel p1, Pixel p2){
+	//Easy Math
+	// return difference_Regular(p1, p2) / 512.0 +
+	// 	difference_ColorRatio(p1, p2) / 440.0 +
+	// 	difference_PerceivedBrightness(p1, p2) / 255.0;
+	//Hard Math
+	// return sqrt(pow(difference_Regular(p1, p2) / 512.0, 2.0) + pow(difference_ColorRatio(p1, p2) / 440.0, 2.0) + pow(difference_PerceivedBrightness(p1, p2) / 255.0, 2.0));
+	//Weighed 3 (first were weights on CR of 1.5 , 3.0)
+	// return difference_Regular(p1, p2) / 512.0 + 
+	// 	9.0 * difference_ColorRatio(p1, p2) / 440.0 +
+	// 	difference_PerceivedBrightness(p1, p2) / 255.0;
+	//weighted 4
+	return difference_Regular(p1, p2) / 512.0 + 
+		9.0 * sqrt(difference_ColorRatio(p1, p2)) / sqrt(440.0) +
+		difference_PerceivedBrightness(p1, p2) / 255.0;
+	//written in a stupid way:
+	//return (difference_Regular(p1, p2) / 512.0) + (9.0 * difference_ColorRatio(p1, p2) / 440.0) + (difference_PerceivedBrightness(p1, p2) / 255.0);
 }
 
 
 int main()
 {
-	std::cout << "LeastAverageImage Version 0.02\n";
+	std::cout << "LeastAverageImage Version 0.03\n";
 
 	//Constants for now, could be inputs in a later version of this program.
-	const std::string INPUT_PATH = "..\\input\\";
-	const std::string SCENE_NAME = "dollars_";
+	const std::string INPUT_PATH = "G:\\LeastAverageImage project 2 (A610)\\";
+	const std::string SCENE_NAME = "a610_";
 	const int FIRST_FRAME = 0;
-	const int LAST_FRAME = 23;
-	const int INPUT_NUM_DIGITS = 4;
+	const int LAST_FRAME = 10316;
+	const int INPUT_NUM_DIGITS = 6;
 	const std::string OUTPUT_PATH = "";
 
 	std::stringstream ss0;
@@ -126,23 +202,60 @@ int main()
 
 	//Second pass: Find the most different.
 	std::cout << "Beginning differenciating phase. First image should take the longest.\n";
-	Image mostDifferentImage = createImage(height, width);
-	std::vector<std::vector<int > > biggestDifference(height, std::vector<int>(width, 0));
+
+	//Variables using regular difference:
+	Image mostDifferentImage_regular = createImage(height, width);
+	std::vector<std::vector<double > > biggestRegularDifference(height, std::vector<double>(width, 0));
+	//Variables using color ratio difference:
+	Image mostDifferentImage_colorRatio = createImage(height, width);
+	std::vector<std::vector<double > > biggestRatioDifference(height, std::vector<double>(width, 0));
+	//Variables using perceived brightness difference:
+	Image mostDifferentImage_Bright = createImage(height, width);
+	std::vector<std::vector<double > > biggestBrightDifference(height, std::vector<double>(width, 0));
+	//Variables using combined difference:
+	Image mostDifferentImage_Combined = createImage(height, width);
+	std::vector<std::vector<double > > biggestCombinedDifference(height, std::vector<double>(width, 0));
+
 	for(int x = FIRST_FRAME; x <= LAST_FRAME; ++x){
 		sprintf(filenameWithPath, "%s%s%0*d.ppm", INPUT_PATH.c_str(), SCENE_NAME.c_str(), INPUT_NUM_DIGITS, x);
 		Image img = readImage(filenameWithPath);
 		for(int i = 0; i < height; ++i){
 			for(int j = 0; j < width; ++j){
-				int diff = difference(meanAverageImage.map[i][j], img.map[i][j]);
-				if(diff > biggestDifference[i][j]){
-					biggestDifference[i][j] = diff;
-					copyPixel(&mostDifferentImage.map[i][j], &img.map[i][j]);
+				double diff_regular = difference_Regular(meanAverageImage.map[i][j], img.map[i][j]);
+				double diff_colorRatio = difference_ColorRatio(meanAverageImage.map[i][j], img.map[i][j]);
+				double diff_bright = difference_PerceivedBrightness(meanAverageImage.map[i][j], img.map[i][j]);
+				double diff_combined = difference_Combined(meanAverageImage.map[i][j], img.map[i][j]);
+
+				if(diff_regular > biggestRegularDifference[i][j]){
+					biggestRegularDifference[i][j] = diff_regular;
+					copyPixel(&mostDifferentImage_regular.map[i][j], &img.map[i][j]);
+				}
+				if(diff_colorRatio > biggestRatioDifference[i][j]){
+					biggestRatioDifference[i][j] = diff_colorRatio;
+					copyPixel(&mostDifferentImage_colorRatio.map[i][j], &img.map[i][j]);
+				}
+				if(diff_bright > biggestBrightDifference[i][j]){
+					biggestBrightDifference[i][j] = diff_bright;
+					copyPixel(&mostDifferentImage_Bright.map[i][j], &img.map[i][j]);
+				}
+				if(diff_combined > biggestCombinedDifference[i][j]){
+					biggestCombinedDifference[i][j] = diff_combined;
+					copyPixel(&mostDifferentImage_Combined.map[i][j], &img.map[i][j]);
 				}
 			}
 		}
+		deleteImage(img);
 		std::cout << "Differenciating: Processed image #" << (x - FIRST_FRAME + 1) << " of " << numImages << "\n";
 	}
-	writeImage(mostDifferentImage, OUTPUT_PATH + OUTPUT_TAG + "mostdifferent.ppm");
+	writeImage(mostDifferentImage_regular, OUTPUT_PATH + OUTPUT_TAG + "mostdiff_regular.ppm");
+	writeImage(mostDifferentImage_colorRatio, OUTPUT_PATH + OUTPUT_TAG + "mostdiff_colorratio.ppm");
+	writeImage(mostDifferentImage_Bright, OUTPUT_PATH + OUTPUT_TAG + "mostdiff_brightness.ppm");
+	writeImage(mostDifferentImage_Combined, OUTPUT_PATH + OUTPUT_TAG + "mostdiff_combined_weighed4.ppm");  //easymath, hardmath, and weighed1.
+
+	deleteImage(mostDifferentImage_regular);
+	deleteImage(mostDifferentImage_colorRatio);
+	deleteImage(mostDifferentImage_Bright);
+	deleteImage(mostDifferentImage_Combined);
 
 	return 0;
 }
