@@ -1,0 +1,4 @@
+*.exe
+output/*.ppm
+output/*.tif
+output/*.jpg
