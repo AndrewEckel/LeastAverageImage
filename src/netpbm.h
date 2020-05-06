@@ -65,12 +65,12 @@ void deleteMatrix(Matrix mx);
 // Read an image from a file and allocate the required heap memory for it.
 // Notice that only binary Netpbm files are supported. Regardless of the
 // file type, all fields r, g, b, and i are filled in, with values from 0 to 255.
-Image readImage(char *filename);
+Image readImage(const char *filename);
 
 // Write an image to a file. The file format (binary PBM, PGM, or PPM) is automatically
 // chosen based on the given file name. For PBM and PGM files, only the intensity
 // (i) information is used, and for PPM files, only r, g, and b are relevant.
-void writeImage(Image img, char *filename);
+void writeImage(Image img, const char *filename);
 
 // Convert the intensity components of an image into a matrix of identical size.
 Matrix image2Matrix(Image img);

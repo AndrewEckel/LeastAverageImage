@@ -8,19 +8,19 @@
 #include <math.h> //round
 #include <cmath> //abs
 #include <stdlib.h>  //for malloc
-#include <algorithm>    // std::max
+#include <algorithm>
 
 #include "netpbm.h"
 //#include "ini.h"  //not yet used
 //#include "abstractimage.h" //used in version 0.01 but not in 0.02
 
-void writeImage(Image img, std::string path_and_filename){
-	char* s = (char*) malloc(path_and_filename.length() + 1);
-	sprintf(s, path_and_filename.c_str());
-	writeImage(img, s);
-	free(s);
-	std::cout << "Wrote file " << path_and_filename << "\n";
-}
+// void writeImage(Image img, std::string path_and_filename){
+// 	char* s = (char*) malloc(path_and_filename.length() + 1);
+// 	sprintf(s, path_and_filename.c_str());
+// 	writeImage(img, s);
+// 	free(s);
+// 	std::cout << "Wrote file " << path_and_filename << "\n";
+// }
 
 void copyPixel(Pixel* to, Pixel from){
 	to->r = from.r;
@@ -122,9 +122,9 @@ typedef struct
 	double (*difference_function)(Pixel, Pixel);  //This is a pointer to a difference function.
 	bool include_this_difference;
 	unsigned int num_pixels_to_rank;
-	bool countdown;
 	bool invert_scores;
 	std::vector<double> score_powers;
+	std::vector<int> rankings_to_save;
 	std::vector<std::vector<std::vector<Pixel > > > mostDifferentPixels;
 	std::vector<std::vector<std::vector<double > > > biggestDifferences;
 } DifferenceRecord;
@@ -132,26 +132,61 @@ typedef struct
 
 int main()
 {
-	std::cout << "LeastAverageImage Version 0.06\n";
+	std::cout << "LeastAverageImage Version 0.08\n";
+
+	//We want to re-create: a610_C_000009-58mostdiff_colorratio_rank6_squarescore
 
 	//Constants for now, could be inputs in a later version of this program.
-	const std::string INPUT_PATH = "G:\\LeastAverageImage inputs\\project 7 (Spaulding)\\ive_eddy\\";
-	const std::string SCENE_NAME = "ive_eddy_";
-	const int FIRST_FRAME = 0;
-	const int LAST_FRAME = 152;
+	const std::string INPUT_PATH = "G:\\LeastAverageImage inputs\\project 6 (smaller numbers of images)\\C\\C with renamed extras\\with me Day 2 teal\\";
+	const std::string SCENE_NAME = "a610_C_";
+	const int FIRST_FRAME = 9;
+	const int LAST_FRAME = 59;
+	const std::string preAveragedImageFilename = "C:\\Code\\LeastAverageImage\\input_averages\\lynnflower_000001-000201avg.ppm";
+	
+	// const std::string INPUT_PATH = "G:\\LeastAverageImage inputs\\project 7 (Spaulding)\\tugboat_selections\\";
+	// const std::string SCENE_NAME = "tugboat_selections_";
+	// const int FIRST_FRAME = 0;
+	// const int LAST_FRAME = 5;
+	// const std::string preAveragedImageFilename = "C:\\Code\\LeastAverageImage\\input_averages\\tugboat_selections_000000-5avg.ppm";
 	const int INPUT_NUM_DIGITS = 6;
-	const std::string OUTPUT_PATH = "";
-	const bool SKIP_AVERAGING_PHASE = true;
-	const int NUM_PIXELS_TO_RANK = 25;
-	const bool COUNTDOWN = true;
+	const std::string OUTPUT_PATH = "C:\\Code\\LeastAverageImage\\output\\C series 50 images each rank6squared\\with 1 frame of me\\me Day 2 teal\\";
+	const bool SKIP_AVERAGING_PHASE = false;
+	//const bool COUNTDOWN = true;  //Remove or rename COUNT_ALL_THE_WAY_DOWN.
 	//const bool SQUARE_SCORE = false;
 	const bool INVERT_SCORES = false;
+	const bool HIDE_WARNINGS = false;
 
 	std::vector<double> powersOfScore;
-	powersOfScore.push_back(1.0);
+	//powersOfScore.push_back(1.0);
 	powersOfScore.push_back(2.0);
-	powersOfScore.push_back(2.5);
-	powersOfScore.push_back(3.5);
+	// powersOfScore.push_back(2.5);
+	// powersOfScore.push_back(3.5);
+	// powersOfScore.push_back(4.5);
+	// powersOfScore.push_back(7.0);
+	// powersOfScore.push_back(10.0);  //will this cause crash??
+
+	std::vector<int> rankingsToSave;
+	// rankingsToSave.push_back(25);
+	// rankingsToSave.push_back(1);
+	rankingsToSave.push_back(6);
+	// rankingsToSave.push_back(10);
+	// rankingsToSave.push_back(18);
+	// rankingsToSave.push_back(80);  //will THIS cause crash????
+	// rankingsToSave.push_back(40);
+	// rankingsToSave.push_back(35);
+	// rankingsToSave.push_back(30);
+	std::sort(rankingsToSave.begin(), rankingsToSave.end(), std::greater<int>());
+	const int NUM_PIXELS_TO_RANK = rankingsToSave[0];
+
+	const bool DO_REGULAR = false;
+	const bool DO_PERCEIVED_BRIGHTNESS = false;
+	const bool DO_COLOR_RATIO = true;
+	const bool DO_COMBO = false;
+	
+	if(DO_REGULAR + DO_PERCEIVED_BRIGHTNESS + DO_COLOR_RATIO + DO_COMBO == 0){
+		std::cerr << "ERROR: No difference functions selected.\n";
+		exit(1);
+	}
 	
 	//Really constants
 	const int NUM_COLOR_CHANNELS = 3; //R,G,B.
@@ -177,11 +212,14 @@ int main()
 	
 	if(SKIP_AVERAGING_PHASE){
 		std::cout << "SKIPPING AVERAGING PHASE. Reading in pre-averaged file.\n";
-		meanAverageImage = readImage("C:\\Code\\LeastAverageImage\\input_averages\\ive_eddy_000000-152avg.ppm");
+		meanAverageImage = readImage(preAveragedImageFilename.c_str());
 		deleteImage(img);
 	}
 	else{
 		std::cout << "Beginning averaging phase. First image should take the longest.\n";
+		//For now, averaging means a mean average.
+		//I can't think of any efficient algorithm for median average with reasonable memory usage.
+		//Maybe such a thing is possible?  https://stackoverflow.com/questions/3372006/incremental-median-computation-with-max-memory-efficiency
 		std::vector<std::vector<std::vector< unsigned long long > > > totals;
 		//First image
 		
@@ -225,7 +263,7 @@ int main()
 				meanAverageImage.map[i][j].b = (unsigned char) round(1.0 * totals[i][j][BLUE_INDEX] / numImages);
 			}
 		}
-		writeImage(meanAverageImage, OUTPUT_PATH + OUTPUT_TAG + "avg.ppm");
+		writeImage(meanAverageImage, (OUTPUT_PATH + OUTPUT_TAG + "avg.ppm").c_str());
 	}
 
 	//Set up all the rules/preferences for the different difference definitions.
@@ -237,28 +275,59 @@ int main()
 
 	std::vector<std::vector<std::vector<Pixel > > > mostDifferentPixels;
 	std::vector<std::vector<std::vector<double > > > biggestDifferences;*/
-	std::vector<DifferenceRecord> drs(4, DifferenceRecord());
+	// std::vector<DifferenceRecord> drs(4, DifferenceRecord());
 
-	drs[0].name = "Regular";
-	drs[0].difference_function = difference_Regular;
+	// drs[0].name = "Regular";
+	// drs[0].difference_function = difference_Regular;
 
-	drs[1].name = "PerceivedBrightness";
-	drs[1].difference_function = difference_PerceivedBrightness;
+	// drs[1].name = "PerceivedBrightness";
+	// drs[1].difference_function = difference_PerceivedBrightness;
 
-	drs[2].name = "ColorRatio";
-	drs[2].difference_function = difference_ColorRatio;
+	// drs[2].name = "ColorRatio";
+	// drs[2].difference_function = difference_ColorRatio;
 
-	drs[3].name = "Combo";
-	drs[3].difference_function = difference_Combined;
+	// drs[3].name = "Combo";
+	// drs[3].difference_function = difference_Combined;
+
+	std::vector<DifferenceRecord> drs;
+
+	if(DO_REGULAR){
+		// drs.push_back(DifferenceRecord());
+		// size_t drs_index = drs.size() - 1;
+		// drs[drs_index].name = "Regular";
+
+		DifferenceRecord dr;
+		dr.name = "Regular";
+		dr.difference_function = difference_Regular;
+		drs.push_back(dr);
+	}
+	if(DO_PERCEIVED_BRIGHTNESS){
+		DifferenceRecord dr;
+		dr.name = "PerceivedBrightness";
+		dr.difference_function = difference_PerceivedBrightness;
+		drs.push_back(dr);
+	}
+	if(DO_COLOR_RATIO){
+		DifferenceRecord dr;
+		dr.name = "ColorRatio";
+		dr.difference_function = difference_ColorRatio;
+		drs.push_back(dr);
+	}
+	if(DO_COMBO){
+		DifferenceRecord dr;
+		dr.name = "Combo";
+		dr.difference_function = difference_Combined;
+		drs.push_back(dr);
+	}
 
 	//Settings that are the same for all:
 	for(size_t drs_index = 0; drs_index < drs.size(); ++drs_index){
 		//These are the same for now but may be separated later:
 		drs[drs_index].include_this_difference = true;  //For now, all runs will include all types of differences.
 		drs[drs_index].num_pixels_to_rank = NUM_PIXELS_TO_RANK;
-		drs[drs_index].countdown = COUNTDOWN;
 		drs[drs_index].invert_scores = INVERT_SCORES;
 		drs[drs_index].score_powers = powersOfScore;
+		drs[drs_index].rankings_to_save = rankingsToSave;
 		//These will always be initialized together:
 		drs[drs_index].mostDifferentPixels = std::vector<std::vector<std::vector<Pixel > > >(height, std::vector<std::vector<Pixel > >(width, std::vector<Pixel>(NUM_PIXELS_TO_RANK, Pixel())));
 		drs[drs_index].biggestDifferences = std::vector<std::vector<std::vector<double > > >(height, std::vector<std::vector<double > >(width, std::vector<double>(NUM_PIXELS_TO_RANK, 0)));
@@ -436,12 +505,14 @@ int main()
 	// }
 
 	for(size_t drs_index = 0; drs_index < drs.size(); ++drs_index){
-		int lastloop = 0;
-		if(drs[drs_index].countdown){
-			lastloop = drs[drs_index].num_pixels_to_rank - 1;
-		}
-		for(int rank_this_many_fewer = 0; rank_this_many_fewer <= lastloop; ++rank_this_many_fewer){
-			int num_pixels_to_rank_this_round = drs[drs_index].num_pixels_to_rank - rank_this_many_fewer;
+		// int lastloop = 0;
+		// if(drs[drs_index].countdown){
+		// 	lastloop = drs[drs_index].num_pixels_to_rank - 1;
+		// }
+		// for(int rank_this_many_fewer = 0; rank_this_many_fewer <= lastloop; ++rank_this_many_fewer){
+		// 	int num_pixels_to_rank_this_round = drs[drs_index].num_pixels_to_rank - rank_this_many_fewer;
+		for(size_t ranking_index = 0; ranking_index < drs[drs_index].rankings_to_save.size(); ++ranking_index){
+			int num_pixels_to_rank_this_round = drs[drs_index].rankings_to_save[ranking_index];
 			for(size_t sp_index = 0; sp_index < drs[drs_index].score_powers.size(); ++sp_index){
 				Image result_img = createImage(height, width);
 				for(int i = 0; i < height; ++i){
@@ -450,7 +521,7 @@ int main()
 						for(int k = 0; k < num_pixels_to_rank_this_round; ++k){
 							totalScore += pow(drs[drs_index].biggestDifferences[i][j][k], drs[drs_index].score_powers[sp_index]);
 						}
-						if(totalScore <= 0.0){
+						if(totalScore <= 0.0 && !HIDE_WARNINGS){
 							std::cout << "WARNING: All pixels at position " << i << ", " << j << " are equal to the average, for " << drs[drs_index].name << ".\n";
 							copyPixel(&result_img.map[i][j], &meanAverageImage.map[i][j]);
 						}
@@ -483,7 +554,7 @@ int main()
 					outputFilename += "_invertscore";
 				}
 				outputFilename += ".ppm";
-				writeImage(result_img, outputFilename);
+				writeImage(result_img, outputFilename.c_str());
 				deleteImage(result_img);
 			}
 		}
