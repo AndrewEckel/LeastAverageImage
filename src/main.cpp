@@ -116,20 +116,33 @@ double difference_Combined(Pixel p1, Pixel p2){
 	//return (difference_Regular(p1, p2) / 512.0) + (9.0 * difference_ColorRatio(p1, p2) / 440.0) + (difference_PerceivedBrightness(p1, p2) / 255.0);
 }
 
+typedef struct
+{
+	std::string name;
+	double (*difference_function)(Pixel, Pixel);  //This is a pointer to a difference function.
+	bool include_this_difference;
+	unsigned int num_pixels_to_rank;
+	bool countdown;
+	bool invert_scores;
+	std::vector<double> score_powers;
+	std::vector<std::vector<std::vector<Pixel > > > mostDifferentPixels;
+	std::vector<std::vector<std::vector<double > > > biggestDifferences;
+} DifferenceRecord;
+
 
 int main()
 {
-	std::cout << "LeastAverageImage Version 0.05\n";
+	std::cout << "LeastAverageImage Version 0.06\n";
 
 	//Constants for now, could be inputs in a later version of this program.
-	const std::string INPUT_PATH = "G:\\LeastAverageImage inputs\\Castle Island\\main set\\";
-	const std::string SCENE_NAME = "castleisland_";
-	const int FIRST_FRAME = 1;
-	const int LAST_FRAME = 408;
+	const std::string INPUT_PATH = "G:\\LeastAverageImage inputs\\project 7 (Spaulding)\\ive_eddy\\";
+	const std::string SCENE_NAME = "ive_eddy_";
+	const int FIRST_FRAME = 0;
+	const int LAST_FRAME = 152;
 	const int INPUT_NUM_DIGITS = 6;
 	const std::string OUTPUT_PATH = "";
-	const bool SKIP_AVERAGING_PHASE = false;
-	const int NUM_PIXELS_TO_RANK = 12;
+	const bool SKIP_AVERAGING_PHASE = true;
+	const int NUM_PIXELS_TO_RANK = 25;
 	const bool COUNTDOWN = true;
 	//const bool SQUARE_SCORE = false;
 	const bool INVERT_SCORES = false;
@@ -148,20 +161,12 @@ int main()
 	const int CHAR_LENGTH_LEEWAY = 100;
 
 	std::stringstream ss0;
-	ss0 << std::setw(INPUT_NUM_DIGITS) << std::setfill('0') << FIRST_FRAME << "-" << LAST_FRAME;
+	ss0 << std::setw(INPUT_NUM_DIGITS) << std::setfill('0') << FIRST_FRAME << "-" << std::setw(INPUT_NUM_DIGITS) << std::setfill('0') << LAST_FRAME;
 	const std::string OUTPUT_TAG = SCENE_NAME + ss0.str();
 
 
 	int numImages = 1 + LAST_FRAME - FIRST_FRAME;
 	char* filenameWithPath = (char*) malloc(INPUT_PATH.length() + SCENE_NAME.length() + INPUT_NUM_DIGITS + 4 + CHAR_LENGTH_LEEWAY);
-	// unsigned long long limit = 18446744073709551615/128;
-	// unsigned long long limit_hours = limit/24/60/60;
-	// //"Dude I can process up to 144115188075855871 images, or 1667999861989 hours of 24 fps video."
-	// std::cout << "Dude I can process up to " << limit << " images, or " << limit_hours << " hours of 24 fps video.\n";
-	// if(numImages > limit){
-	// 	std::cerr << "ERROR: Cannot process " << numImages << " images.\n";
-	// 	exit(1);
-	// }	
 
 	//First pass: Sum all the values in the input files.
 	Image meanAverageImage;
@@ -223,47 +228,83 @@ int main()
 		writeImage(meanAverageImage, OUTPUT_PATH + OUTPUT_TAG + "avg.ppm");
 	}
 
-	//Second pass: Find the most different.
-	std::cout << "Beginning differenciating phase. First image should take the longest.\n";
+	//Set up all the rules/preferences for the different difference definitions.
+	//The 4 defs are: Regular (rename?), Perceived Brightness, Color Ratio, and Combo.
 
-	//Variables using regular difference:
-	Image mostDifferentImage_regular = createImage(height, width);
-	std::vector<std::vector<double > > biggestRegularDifference(height, std::vector<double>(width, 0));
-	//Variables using color ratio difference:
-	// Image mostDifferentImage_colorRatio = createImage(height, width);
-	std::vector<std::vector<std::vector<Pixel > > > mostDifferentPixels_ColorRatio(height, std::vector<std::vector<Pixel > >(width, std::vector<Pixel>(NUM_PIXELS_TO_RANK, Pixel())));
-	//std::vector<std::vector<std::vector<Pixel > > > mostDifferentPixels_ColorRatio;
-	//std::vector<std::vector<std::vector<Pixel > > > mostDifferentPixels_ColorRatio(height, std::vector<std::vector<Pixel > >(width, std::vector<Pixel>));
-	std::vector<std::vector<std::vector<double > > > biggestRatioDifference(height, std::vector<std::vector<double > >(width, std::vector<double>(NUM_PIXELS_TO_RANK, 0)));
+	/*
+
+
+
+	std::vector<std::vector<std::vector<Pixel > > > mostDifferentPixels;
+	std::vector<std::vector<std::vector<double > > > biggestDifferences;*/
+	std::vector<DifferenceRecord> drs(4, DifferenceRecord());
+
+	drs[0].name = "Regular";
+	drs[0].difference_function = difference_Regular;
+
+	drs[1].name = "PerceivedBrightness";
+	drs[1].difference_function = difference_PerceivedBrightness;
+
+	drs[2].name = "ColorRatio";
+	drs[2].difference_function = difference_ColorRatio;
+
+	drs[3].name = "Combo";
+	drs[3].difference_function = difference_Combined;
+
+	//Settings that are the same for all:
+	for(size_t drs_index = 0; drs_index < drs.size(); ++drs_index){
+		//These are the same for now but may be separated later:
+		drs[drs_index].include_this_difference = true;  //For now, all runs will include all types of differences.
+		drs[drs_index].num_pixels_to_rank = NUM_PIXELS_TO_RANK;
+		drs[drs_index].countdown = COUNTDOWN;
+		drs[drs_index].invert_scores = INVERT_SCORES;
+		drs[drs_index].score_powers = powersOfScore;
+		//These will always be initialized together:
+		drs[drs_index].mostDifferentPixels = std::vector<std::vector<std::vector<Pixel > > >(height, std::vector<std::vector<Pixel > >(width, std::vector<Pixel>(NUM_PIXELS_TO_RANK, Pixel())));
+		drs[drs_index].biggestDifferences = std::vector<std::vector<std::vector<double > > >(height, std::vector<std::vector<double > >(width, std::vector<double>(NUM_PIXELS_TO_RANK, 0)));
 	
-	for(int i = 0; i < height; ++i){
-		mostDifferentPixels_ColorRatio.push_back(std::vector<std::vector<Pixel > >());
-		for(int j = 0; j < width; ++j){
-			mostDifferentPixels_ColorRatio[i].push_back(std::vector<Pixel>());
-			for(int k = 0; k < NUM_PIXELS_TO_RANK; ++k){
-				Pixel blah;
-				blah.r = 255;
-				blah.g = 255;
-				blah.b = 255;
-				mostDifferentPixels_ColorRatio[i][j].push_back(blah);
+		//Ah man this sucks. There must be some way to not have to do this part:
+		for(int i = 0; i < height; ++i){
+			drs[drs_index].mostDifferentPixels.push_back(std::vector<std::vector<Pixel > >());
+			for(int j = 0; j < width; ++j){
+				drs[drs_index].mostDifferentPixels[i].push_back(std::vector<Pixel>());
+				for(int k = 0; k < NUM_PIXELS_TO_RANK; ++k){
+					Pixel blah;
+					blah.r = 255;
+					blah.g = 255;
+					blah.b = 255;
+					drs[drs_index].mostDifferentPixels[i][j].push_back(blah);
+				}
 			}
 		}
 	}
 
 
-	// //Variables using perceived brightness difference:
-	Image mostDifferentImage_Bright = createImage(height, width);
-	std::vector<std::vector<double > > biggestBrightDifference(height, std::vector<double>(width, 0));
-	// //Variables using combined difference:
-	Image mostDifferentImage_Combined = createImage(height, width);
-	std::vector<std::vector<double > > biggestCombinedDifference(height, std::vector<double>(width, 0));
 
-	// mostDifferentPixels_ColorRatio[0][3][0].r = 111;
-	// mostDifferentPixels_ColorRatio[0][3][0].g = 111;
-	// mostDifferentPixels_ColorRatio[0][3][0].b = 111;
-	// for(int j = 0; j < 5; ++j){
-	// 	std::cout << "(0," << j << "): (" << mostDifferentPixels_ColorRatio[0][j][0].r << ", " << mostDifferentPixels_ColorRatio[0][j][0].g << ", " << mostDifferentPixels_ColorRatio[0][j][0].b << ")\n";
-	// }
+
+	//Second pass: Find the most different.
+	std::cout << "Beginning differenciating phase. First image should take the longest.\n";
+
+	//Variables using regular difference:
+	// Image mostDifferentImage_regular = createImage(height, width);
+	// std::vector<std::vector<double > > biggestRegularDifference(height, std::vector<double>(width, 0));
+	// //Variables using color ratio difference:
+	// // Image mostDifferentImage_colorRatio = createImage(height, width);
+	// std::vector<std::vector<std::vector<Pixel > > > mostDifferentPixels_ColorRatio(height, std::vector<std::vector<Pixel > >(width, std::vector<Pixel>(NUM_PIXELS_TO_RANK, Pixel())));
+	// //std::vector<std::vector<std::vector<Pixel > > > mostDifferentPixels_ColorRatio;
+	// //std::vector<std::vector<std::vector<Pixel > > > mostDifferentPixels_ColorRatio(height, std::vector<std::vector<Pixel > >(width, std::vector<Pixel>));
+	// std::vector<std::vector<std::vector<double > > > biggestRatioDifference(height, std::vector<std::vector<double > >(width, std::vector<double>(NUM_PIXELS_TO_RANK, 0)));
+	
+
+	
+
+
+	// //Variables using perceived brightness difference:
+	// Image mostDifferentImage_Bright = createImage(height, width);
+	// std::vector<std::vector<double > > biggestBrightDifference(height, std::vector<double>(width, 0));
+	// // //Variables using combined difference:
+	// Image mostDifferentImage_Combined = createImage(height, width);
+	// std::vector<std::vector<double > > biggestCombinedDifference(height, std::vector<double>(width, 0));
 
 
 	for(int x = FIRST_FRAME; x <= LAST_FRAME; ++x){
@@ -271,44 +312,67 @@ int main()
 		Image img = readImage(filenameWithPath);
 		for(int i = 0; i < height; ++i){
 			for(int j = 0; j < width; ++j){
-				double diff_regular = difference_Regular(meanAverageImage.map[i][j], img.map[i][j]);
-				double diff_colorRatio = difference_ColorRatio(meanAverageImage.map[i][j], img.map[i][j]);
-				double diff_bright = difference_PerceivedBrightness(meanAverageImage.map[i][j], img.map[i][j]);
-				double diff_combined = difference_Combined(meanAverageImage.map[i][j], img.map[i][j]);
+				for(size_t drs_index = 0; drs_index < drs.size(); ++drs_index){
+					// double diff_regular = difference_Regular(meanAverageImage.map[i][j], img.map[i][j]);
+					// double diff_colorRatio = difference_ColorRatio(meanAverageImage.map[i][j], img.map[i][j]);
+					// double diff_bright = difference_PerceivedBrightness(meanAverageImage.map[i][j], img.map[i][j]);
+					// double diff_combined = difference_Combined(meanAverageImage.map[i][j], img.map[i][j]);
+					double diff = drs[drs_index].difference_function(meanAverageImage.map[i][j], img.map[i][j]);
 
-				if(diff_regular > biggestRegularDifference[i][j]){
-					biggestRegularDifference[i][j] = diff_regular;
-					copyPixel(&mostDifferentImage_regular.map[i][j], &img.map[i][j]);
-				}
-				// if(diff_colorRatio > biggestRatioDifference[i][j]){
-				// 	biggestRatioDifference[i][j] = diff_colorRatio;
-				// 	copyPixel(&mostDifferentImage_colorRatio.map[i][j], &img.map[i][j]);
-				// }
-				if(diff_colorRatio > biggestRatioDifference[i][j][NUM_PIXELS_TO_RANK - 1]){
-					int rank = NUM_PIXELS_TO_RANK - 1;
-					while(rank >= 0 && diff_colorRatio > biggestRatioDifference[i][j][rank]){
-						--rank;
+					// if(diff_regular > biggestRegularDifference[i][j]){
+					// 	biggestRegularDifference[i][j] = diff_regular;
+					// 	copyPixel(&mostDifferentImage_regular.map[i][j], &img.map[i][j]);
+					// }
+					// if(diff_colorRatio > biggestRatioDifference[i][j]){
+					// 	biggestRatioDifference[i][j] = diff_colorRatio;
+					// 	copyPixel(&mostDifferentImage_colorRatio.map[i][j], &img.map[i][j]);
+					// }
+					// if(diff_colorRatio > biggestRatioDifference[i][j][NUM_PIXELS_TO_RANK - 1]){
+					// 	int rank = NUM_PIXELS_TO_RANK - 1;
+					// 	while(rank >= 0 && diff_colorRatio > biggestRatioDifference[i][j][rank]){
+					// 		--rank;
+					// 	}
+					// 	++rank;
+					// 	//std::cout << "Rank of " << rank << "\n";
+					// 	if(rank < 0 || rank >= NUM_PIXELS_TO_RANK){
+					// 		std::cerr << "ERROR: rANK = " << rank << " for (" << i << ", " << j << ")\n";
+					// 		exit(1);
+					// 	}
+					// 	for(size_t backwards_iterator = NUM_PIXELS_TO_RANK - 1; backwards_iterator > rank; --backwards_iterator){
+					// 		biggestRatioDifference[i][j][backwards_iterator] = biggestRatioDifference[i][j][backwards_iterator - 1];
+					// 		copyPixel(&mostDifferentPixels_ColorRatio[i][j][backwards_iterator], &mostDifferentPixels_ColorRatio[i][j][backwards_iterator - 1]);
+					// 	}
+					// 	biggestRatioDifference[i][j][rank] = diff_colorRatio;
+					// 	copyPixel(&mostDifferentPixels_ColorRatio[i][j][rank], &img.map[i][j]);
+					// }
+
+					if(diff > drs[drs_index].biggestDifferences[i][j][drs[drs_index].num_pixels_to_rank - 1]){  ///almost positive you can remove the if-statement here.
+						int rank = drs[drs_index].num_pixels_to_rank - 1;
+						while(rank >= 0 && diff > drs[drs_index].biggestDifferences[i][j][rank]){
+							--rank;
+						}
+						++rank;
+						if(rank < 0 || rank >= drs[drs_index].num_pixels_to_rank){
+							std::cerr << "ERROR: RANK " << rank << " for " << drs[drs_index].name << "(" << i << ", " << j << ")\n";
+						}
+						for(size_t backwards_iterator = drs[drs_index].num_pixels_to_rank - 1; backwards_iterator > rank; --backwards_iterator){
+							drs[drs_index].biggestDifferences[i][j][backwards_iterator] = drs[drs_index].biggestDifferences[i][j][backwards_iterator - 1];
+							copyPixel(&drs[drs_index].mostDifferentPixels[i][j][backwards_iterator], &drs[drs_index].mostDifferentPixels[i][j][backwards_iterator - 1]);
+						}
+						drs[drs_index].biggestDifferences[i][j][rank] = diff;
+						copyPixel(&drs[drs_index].mostDifferentPixels[i][j][rank], &img.map[i][j]);
 					}
-					++rank;
-					//std::cout << "Rank of " << rank << "\n";
-					if(rank < 0 || rank >= NUM_PIXELS_TO_RANK){
-						std::cerr << "ERROR: rANK = " << rank << " for (" << i << ", " << j << ")\n";
-						exit(1);
-					}
-					for(size_t backwards_iterator = NUM_PIXELS_TO_RANK - 1; backwards_iterator > rank; --backwards_iterator){
-						biggestRatioDifference[i][j][backwards_iterator] = biggestRatioDifference[i][j][backwards_iterator - 1];
-						copyPixel(&mostDifferentPixels_ColorRatio[i][j][backwards_iterator], &mostDifferentPixels_ColorRatio[i][j][backwards_iterator - 1]);
-					}
-					biggestRatioDifference[i][j][rank] = diff_colorRatio;
-					copyPixel(&mostDifferentPixels_ColorRatio[i][j][rank], &img.map[i][j]);
-				}
-				if(diff_bright > biggestBrightDifference[i][j]){
-					biggestBrightDifference[i][j] = diff_bright;
-					copyPixel(&mostDifferentImage_Bright.map[i][j], &img.map[i][j]);
-				}
-				if(diff_combined > biggestCombinedDifference[i][j]){
-					biggestCombinedDifference[i][j] = diff_combined;
-					copyPixel(&mostDifferentImage_Combined.map[i][j], &img.map[i][j]);
+
+
+
+					// if(diff_bright > biggestBrightDifference[i][j]){
+					// 	biggestBrightDifference[i][j] = diff_bright;
+					// 	copyPixel(&mostDifferentImage_Bright.map[i][j], &img.map[i][j]);
+					// }
+					// if(diff_combined > biggestCombinedDifference[i][j]){
+					// 	biggestCombinedDifference[i][j] = diff_combined;
+					// 	copyPixel(&mostDifferentImage_Combined.map[i][j], &img.map[i][j]);
+					// }
 				}
 			}
 		}
@@ -316,77 +380,128 @@ int main()
 		std::cout << "Differenciating: Processed image #" << (x - FIRST_FRAME + 1) << " of " << numImages << "\n";
 	}
 
-	// double score_power = 1.0;
-	// if(SQUARE_SCORE){
-	// 	score_power = 2.0;
+
+	// int lastloop = 0;
+	// if(COUNTDOWN){
+	// 	lastloop = NUM_PIXELS_TO_RANK - 1;
+	// }
+	// for(int rank_this_many_fewer = 0; rank_this_many_fewer <= lastloop; ++rank_this_many_fewer){
+	// 	int num_pixels_to_rank_this_round = NUM_PIXELS_TO_RANK - rank_this_many_fewer;
+	// 	for(size_t score_power_index = 0; score_power_index < powersOfScore.size(); ++score_power_index){
+	// 		Image mostDifferentImage_colorRatio = createImage(height, width);
+	// 		for(int i = 0; i < height; ++i){
+	// 			for(int j = 0; j < width; ++j){
+	// 				double totalScore = 0.0;
+	// 				for(int k = 0; k < num_pixels_to_rank_this_round; ++k){
+	// 					totalScore += pow(biggestRatioDifference[i][j][k], powersOfScore[score_power_index]);
+	// 				}
+	// 				if(totalScore == 0.0){
+	// 					std::cout << "WARNING: All pixels at position " << i << ", " << j << " are equal to the average.\n";
+	// 					copyPixel(&mostDifferentImage_colorRatio.map[i][j], &meanAverageImage.map[i][j]);
+	// 				}
+	// 				else{
+	// 					//std::vector<double> weights;
+	// 					std::vector<double> newRGB(NUM_COLOR_CHANNELS, 0.0);
+	// 					for(int k = 0; k < num_pixels_to_rank_this_round; ++k){
+	// 						//weights.push_back(biggestRatioDifference[i][j][k] / totalScore);
+	// 						double weight = pow(biggestRatioDifference[i][j][k], powersOfScore[score_power_index]) / totalScore;
+	// 						if(INVERT_SCORES){
+	// 							weight = 1 - weight;
+	// 						}
+	// 						newRGB[RED_INDEX] += mostDifferentPixels_ColorRatio[i][j][k].r * weight;
+	// 						newRGB[GREEN_INDEX] += mostDifferentPixels_ColorRatio[i][j][k].g * weight;
+	// 						newRGB[BLUE_INDEX] += mostDifferentPixels_ColorRatio[i][j][k].b * weight;
+	// 					}
+	// 					mostDifferentImage_colorRatio.map[i][j].r = (unsigned char) round(newRGB[RED_INDEX]);
+	// 					mostDifferentImage_colorRatio.map[i][j].g = (unsigned char) round(newRGB[GREEN_INDEX]);
+	// 					mostDifferentImage_colorRatio.map[i][j].b = (unsigned char) round(newRGB[BLUE_INDEX]);
+	// 				}
+	// 			}
+	// 		}
+	// 		std::stringstream ss1;
+	// 		ss1 << num_pixels_to_rank_this_round;
+	// 		std::string numPixelsToRankAsString = ss1.str();
+	// 		std::string outputFilenameColorRatio = OUTPUT_PATH + OUTPUT_TAG + "mostdiff_colorratio_rank" + numPixelsToRankAsString;
+	// 		std::stringstream ss2;
+	// 		ss2 << std::setprecision(1) << std::fixed << powersOfScore[score_power_index];
+	// 		std::string powerAsString = ss2.str();
+	// 		outputFilenameColorRatio += "_power" + powerAsString;
+	// 		if(INVERT_SCORES){
+	// 			outputFilenameColorRatio += "_invertscore";
+	// 		}
+	// 		outputFilenameColorRatio += ".ppm";
+	// 		writeImage(mostDifferentImage_colorRatio, outputFilenameColorRatio);
+	// 		deleteImage(mostDifferentImage_colorRatio);
+	// 	}
 	// }
 
-	int lastloop = 0;
-	if(COUNTDOWN){
-		lastloop = NUM_PIXELS_TO_RANK - 1;
-	}
-	for(int rank_this_many_fewer = 0; rank_this_many_fewer <= lastloop; ++rank_this_many_fewer){
-		int num_pixels_to_rank_this_round = NUM_PIXELS_TO_RANK - rank_this_many_fewer;
-		for(size_t score_power_index = 0; score_power_index < powersOfScore.size(); ++score_power_index){
-			Image mostDifferentImage_colorRatio = createImage(height, width);
-			for(int i = 0; i < height; ++i){
-				for(int j = 0; j < width; ++j){
-					double totalScore = 0.0;
-					for(int k = 0; k < num_pixels_to_rank_this_round; ++k){
-						totalScore += pow(biggestRatioDifference[i][j][k], powersOfScore[score_power_index]);
-					}
-					if(totalScore == 0.0){
-						std::cout << "WARNING: All pixels at position " << i << ", " << j << " are equal to the average.\n";
-						copyPixel(&mostDifferentImage_colorRatio.map[i][j], &meanAverageImage.map[i][j]);
-					}
-					else{
-						//std::vector<double> weights;
-						std::vector<double> newRGB(NUM_COLOR_CHANNELS, 0.0);
+	for(size_t drs_index = 0; drs_index < drs.size(); ++drs_index){
+		int lastloop = 0;
+		if(drs[drs_index].countdown){
+			lastloop = drs[drs_index].num_pixels_to_rank - 1;
+		}
+		for(int rank_this_many_fewer = 0; rank_this_many_fewer <= lastloop; ++rank_this_many_fewer){
+			int num_pixels_to_rank_this_round = drs[drs_index].num_pixels_to_rank - rank_this_many_fewer;
+			for(size_t sp_index = 0; sp_index < drs[drs_index].score_powers.size(); ++sp_index){
+				Image result_img = createImage(height, width);
+				for(int i = 0; i < height; ++i){
+					for(int j = 0; j < width; ++j){
+						double totalScore = 0.0;
 						for(int k = 0; k < num_pixels_to_rank_this_round; ++k){
-							//weights.push_back(biggestRatioDifference[i][j][k] / totalScore);
-							double weight = pow(biggestRatioDifference[i][j][k], powersOfScore[score_power_index]) / totalScore;
-							if(INVERT_SCORES){
-								weight = 1 - weight;
-							}
-							newRGB[RED_INDEX] += mostDifferentPixels_ColorRatio[i][j][k].r * weight;
-							newRGB[GREEN_INDEX] += mostDifferentPixels_ColorRatio[i][j][k].g * weight;
-							newRGB[BLUE_INDEX] += mostDifferentPixels_ColorRatio[i][j][k].b * weight;
+							totalScore += pow(drs[drs_index].biggestDifferences[i][j][k], drs[drs_index].score_powers[sp_index]);
 						}
-						mostDifferentImage_colorRatio.map[i][j].r = (unsigned char) round(newRGB[RED_INDEX]);
-						mostDifferentImage_colorRatio.map[i][j].g = (unsigned char) round(newRGB[GREEN_INDEX]);
-						mostDifferentImage_colorRatio.map[i][j].b = (unsigned char) round(newRGB[BLUE_INDEX]);
+						if(totalScore <= 0.0){
+							std::cout << "WARNING: All pixels at position " << i << ", " << j << " are equal to the average, for " << drs[drs_index].name << ".\n";
+							copyPixel(&result_img.map[i][j], &meanAverageImage.map[i][j]);
+						}
+						else{
+							std::vector<double> newRGB(NUM_COLOR_CHANNELS, 0.0);
+							for(int k = 0; k < num_pixels_to_rank_this_round; ++k){
+								double weight = pow(drs[drs_index].biggestDifferences[i][j][k], drs[drs_index].score_powers[sp_index]) / totalScore;
+								if(drs[drs_index].invert_scores){
+									weight = 1 - weight;
+								}
+								newRGB[RED_INDEX] += drs[drs_index].mostDifferentPixels[i][j][k].r * weight;
+								newRGB[GREEN_INDEX] += drs[drs_index].mostDifferentPixels[i][j][k].g * weight;
+								newRGB[BLUE_INDEX] += drs[drs_index].mostDifferentPixels[i][j][k].b * weight;
+							}
+							result_img.map[i][j].r = (unsigned char) round(newRGB[RED_INDEX]);
+							result_img.map[i][j].g = (unsigned char) round(newRGB[GREEN_INDEX]);
+							result_img.map[i][j].b = (unsigned char) round(newRGB[BLUE_INDEX]);
+						}
 					}
 				}
+				std::stringstream ss1;
+				ss1 << num_pixels_to_rank_this_round;
+				std::string numPixelsToRankAsString = ss1.str();
+				std::string outputFilename = OUTPUT_PATH + OUTPUT_TAG + drs[drs_index].name + "_rank" + numPixelsToRankAsString;
+				std::stringstream ss2;
+				ss2 << std::setprecision(1) << std::fixed << drs[drs_index].score_powers[sp_index];
+				std::string powerAsString = ss2.str();
+				outputFilename += "_power" + powerAsString;
+				if(drs[drs_index].invert_scores){
+					outputFilename += "_invertscore";
+				}
+				outputFilename += ".ppm";
+				writeImage(result_img, outputFilename);
+				deleteImage(result_img);
 			}
-			std::stringstream ss1;
-			ss1 << num_pixels_to_rank_this_round;
-			std::string numPixelsToRankAsString = ss1.str();
-			std::string outputFilenameColorRatio = OUTPUT_PATH + OUTPUT_TAG + "mostdiff_colorratio_rank" + numPixelsToRankAsString;
-			// if(SQUARE_SCORE){
-			// 	outputFilenameColorRatio += "_squarescore"; 
-			// }
-			std::stringstream ss2;
-			ss2 << powersOfScore[score_power_index];
-			std::string powerAsString = ss2.str();
-			outputFilenameColorRatio += "_power" + powerAsString;
-			if(INVERT_SCORES){
-				outputFilenameColorRatio += "_invertscore";
-			}
-			outputFilenameColorRatio += ".ppm";
-			writeImage(mostDifferentImage_colorRatio, outputFilenameColorRatio);
-			deleteImage(mostDifferentImage_colorRatio);
 		}
-	}	
+	}
 
 
-	writeImage(mostDifferentImage_regular, OUTPUT_PATH + OUTPUT_TAG + "mostdiff_regular.ppm");
+
+
+
+
+	// writeImage(mostDifferentImage_regular, OUTPUT_PATH + OUTPUT_TAG + "mostdiff_regular.ppm");
 	
-	writeImage(mostDifferentImage_Bright, OUTPUT_PATH + OUTPUT_TAG + "mostdiff_brightness.ppm");
-	writeImage(mostDifferentImage_Combined, OUTPUT_PATH + OUTPUT_TAG + "mostdiff_combined_weighed4.ppm");  //easymath, hardmath, and weighed1.
+	// writeImage(mostDifferentImage_Bright, OUTPUT_PATH + OUTPUT_TAG + "mostdiff_brightness.ppm");
+	// writeImage(mostDifferentImage_Combined, OUTPUT_PATH + OUTPUT_TAG + "mostdiff_combined_weighed4.ppm");  //easymath, hardmath, and weighed1.
 
-	deleteImage(mostDifferentImage_regular);
-	deleteImage(mostDifferentImage_Bright);
-	deleteImage(mostDifferentImage_Combined);
+	// deleteImage(mostDifferentImage_regular);
+	// deleteImage(mostDifferentImage_Bright);
+	// deleteImage(mostDifferentImage_Combined);
 
 	return 0;
 }
