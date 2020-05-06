@@ -1,4 +1,7 @@
 *.exe
-output/*.ppm
-output/*.tif
-output/*.jpg
+output/**/*.ppm
+output/**/*.tif
+output/**/*.jpg
+output/**/*.png
+output/**/*.gif
+output/**/*.psd
