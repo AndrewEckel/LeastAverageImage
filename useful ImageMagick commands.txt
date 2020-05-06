@@ -1,0 +1,17 @@
+for /r %i in (*) do convert "%~ni.ppm" "%~ni.bmp"
+for /r %i in (*) do convert "%~ni.ppm" "%~ni.bmp" && del "%~ni.ppm"
+for /r %i in (*) do convert "%~ni.ppm" ../BMP/"%~ni.bmp" && del "%~ni.ppm"
+for /r %i in (*) do convert "%~ni.tga" "%~ni.ppm"
+for /r %i in (*) do convert "%~ni.tga" "%~ni.ppm" && del "%~ni.tga"
+for /r %i in (*) do convert "%~ni.tga" "%~ni.tif" && del "%~ni.tga"
+for /r %i in (*) do convert "%~ni.tif" "%~ni.tga" && del "%~ni.tif"
+for /r %i in (*) do convert "%~ni.webp" "%~ni.jpg" && del "%~ni.webp"
+for /r %i in (*) do convert "%~ni.jpg" "%~ni.ppm"
+for /r %i in (*) do convert "%~ni.ppm" "%~ni.tif" && del "%~ni.ppm"
+for /r %i in (*) do convert "%~ni.jpg" "%~ni.ppm" && del "%~ni.jpg"
+
+
+
+
+for /r %i in (*) do convert -rotate "90" "%~ni.jpg" "zz%~ni.jpg" && del "%~ni.jpg"
+for /r %i in (*) do convert -resize 1024x768! "%~ni.jpg" "zz%~ni.jpg"
