@@ -111,7 +111,6 @@ typedef struct
 {
 	std::string name;
 	double (*difference_function)(Pixel, Pixel);  //This is a pointer to a difference function.
-	bool include_this_difference;
 	unsigned int num_pixels_to_rank;
 	bool invert_scores;
 	std::vector<double> score_powers;
@@ -140,7 +139,7 @@ std::string doubleToString(double x, int fixed_precision){
 
 int main()
 {
-	std::cout << "LeastAverageImage Version 0.09\n";
+	std::cout << "LeastAverageImage Version 0.10\n";
 
 	//Constants for now, could be inputs in a later version of this program.
 	const std::string INPUT_PATH = "G:\\LeastAverageImage inputs\\project 6 (smaller numbers of images)\\C\\C with renamed extras\\with me Day 2 teal\\";
@@ -150,7 +149,7 @@ int main()
 	const std::string preAveragedImageFilename = "C:\\Code\\LeastAverageImage\\input_averages\\lynnflower_000001-000201avg.ppm";
 	
 	const int INPUT_NUM_DIGITS = 6;
-	const std::string OUTPUT_PATH = "C:\\Code\\LeastAverageImage\\output\\C series 50 images each rank6squared\\with 1 frame of me\\me Day 2 teal test2\\";
+	const std::string OUTPUT_PATH = "C:\\Code\\LeastAverageImage\\output\\C series 50 images each rank6squared\\with 1 frame of me\\me Day 2 teal test3\\";
 	const bool SKIP_AVERAGING_PHASE = false;
 	const bool INVERT_SCORES = false;
 	const bool HIDE_WARNINGS = false;
@@ -290,32 +289,22 @@ int main()
 		drs.push_back(dr);
 	}
 
+	Pixel white;
+	white.r = 255;
+	white.g = 255;
+	white.b = 255;
+
 	//Settings that are the same for all of the difference functions used:
 	for(size_t drs_index = 0; drs_index < drs.size(); ++drs_index){
 		//These are the same for now but may be separated later:
-		drs[drs_index].include_this_difference = true;  //For now, all runs will include all types of differences.
 		drs[drs_index].num_pixels_to_rank = NUM_PIXELS_TO_RANK;
 		drs[drs_index].invert_scores = INVERT_SCORES;
 		drs[drs_index].score_powers = powersOfScore;
 		drs[drs_index].rankings_to_save = rankingsToSave;
-		//These will always be initialized together:
-		drs[drs_index].mostDifferentPixels = std::vector<std::vector<std::vector<Pixel > > >(height, std::vector<std::vector<Pixel > >(width, std::vector<Pixel>(NUM_PIXELS_TO_RANK, Pixel())));
+
+		//Initialize mostDifferentPixels (all white) and biggestDifferences (all zeroes).
+		drs[drs_index].mostDifferentPixels = std::vector<std::vector<std::vector<Pixel > > >(height, std::vector<std::vector<Pixel > >(width, std::vector<Pixel>(NUM_PIXELS_TO_RANK, white)));
 		drs[drs_index].biggestDifferences = std::vector<std::vector<std::vector<double > > >(height, std::vector<std::vector<double > >(width, std::vector<double>(NUM_PIXELS_TO_RANK, 0)));
-	
-		//Ah man this sucks. There must be some way to not have to do this part:
-		for(int i = 0; i < height; ++i){
-			drs[drs_index].mostDifferentPixels.push_back(std::vector<std::vector<Pixel > >());
-			for(int j = 0; j < width; ++j){
-				drs[drs_index].mostDifferentPixels[i].push_back(std::vector<Pixel>());
-				for(int k = 0; k < NUM_PIXELS_TO_RANK; ++k){
-					Pixel blah;
-					blah.r = 255;
-					blah.g = 255;
-					blah.b = 255;
-					drs[drs_index].mostDifferentPixels[i][j].push_back(blah);
-				}
-			}
-		}
 	}
 
 	//Second pass: Find the most different.
@@ -354,13 +343,21 @@ int main()
 	for(size_t drs_index = 0; drs_index < drs.size(); ++drs_index){
 		for(size_t ranking_index = 0; ranking_index < drs[drs_index].rankings_to_save.size(); ++ranking_index){
 			int num_pixels_to_rank_this_round = drs[drs_index].rankings_to_save[ranking_index];
-			for(size_t sp_index = 0; sp_index < drs[drs_index].score_powers.size(); ++sp_index){
+			int num_powers_this_round = drs[drs_index].score_powers.size();
+			if(num_pixels_to_rank_this_round == 1){
+				num_powers_this_round = 1;
+			}
+			for(size_t sp_index = 0; sp_index < num_powers_this_round; ++sp_index){
+				double current_power = drs[drs_index].score_powers[sp_index];
+				if(num_pixels_to_rank_this_round == 1){
+					current_power = 1.0;
+				}
 				Image result_img = createImage(height, width);
 				for(int i = 0; i < height; ++i){
 					for(int j = 0; j < width; ++j){
 						double totalScore = 0.0;
 						for(int k = 0; k < num_pixels_to_rank_this_round; ++k){
-							totalScore += pow(drs[drs_index].biggestDifferences[i][j][k], drs[drs_index].score_powers[sp_index]);
+							totalScore += pow(drs[drs_index].biggestDifferences[i][j][k], current_power);
 						}
 						if(totalScore <= 0.0 && !HIDE_WARNINGS){
 							std::cout << "WARNING: All pixels at position " << i << ", " << j << " are equal to the average, for " << drs[drs_index].name << ".\n";
@@ -369,7 +366,7 @@ int main()
 						else{
 							std::vector<double> newRGB(NUM_COLOR_CHANNELS, 0.0);
 							for(int k = 0; k < num_pixels_to_rank_this_round; ++k){
-								double weight = pow(drs[drs_index].biggestDifferences[i][j][k], drs[drs_index].score_powers[sp_index]) / totalScore;
+								double weight = pow(drs[drs_index].biggestDifferences[i][j][k], current_power) / totalScore;
 								if(drs[drs_index].invert_scores){
 									weight = 1 - weight;
 								}
@@ -385,7 +382,7 @@ int main()
 				}
 				std::string numPixelsToRankAsString = intToString(num_pixels_to_rank_this_round);
 				std::string outputFilename = OUTPUT_PATH + OUTPUT_TAG + drs[drs_index].name + "_rank" + numPixelsToRankAsString;
-				std::string powerAsString = doubleToString(drs[drs_index].score_powers[sp_index], 1);
+				std::string powerAsString = doubleToString(current_power, 1);
 				outputFilename += "_power" + powerAsString;
 				if(drs[drs_index].invert_scores){
 					outputFilename += "_invertscore";
