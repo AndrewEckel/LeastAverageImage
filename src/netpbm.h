@@ -1,11 +1,14 @@
 #ifndef NETPBM
 #define NETPBM
 
+#include <string>
+
 // netpbm.h
 // Functions for reading and writing binary PBM, PGM, and PPM image files.
-// V2.2A by Andrew Eckel, based on...
+// V2.2B by Andrew Eckel, based on...
 // V2.2 by Marc Pomplun on 10/19/2013
 // This version has the "i" channel removed. It is more efficient for PPM files but it no longer supports PBM, PGM.
+// It also has versions of functions that accept C++ std::strings instead of C-style string literals.
 
 #define SQR(x) ((x)*(x))
 #define PI 3.14159265358979323846
@@ -66,11 +69,13 @@ void deleteMatrix(Matrix mx);
 // Notice that only binary Netpbm files are supported. Regardless of the
 // file type, all fields r, g, b, and i are filled in, with values from 0 to 255.
 Image readImage(const char *filename);
+Image readImage(const std::string filename);
 
 // Write an image to a file. The file format (binary PBM, PGM, or PPM) is automatically
 // chosen based on the given file name. For PBM and PGM files, only the intensity
 // (i) information is used, and for PPM files, only r, g, and b are relevant.
 void writeImage(Image img, const char *filename);
+void writeImage(Image img, const std::string filename);
 
 // Convert the intensity components of an image into a matrix of identical size.
 Matrix image2Matrix(Image img);

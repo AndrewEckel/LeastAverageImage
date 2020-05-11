@@ -12,15 +12,6 @@
 
 #include "netpbm.h"
 //#include "ini.h"  //not yet used
-//#include "abstractimage.h" //used in version 0.01 but not in 0.02
-
-// void writeImage(Image img, std::string path_and_filename){
-// 	char* s = (char*) malloc(path_and_filename.length() + 1);
-// 	sprintf(s, path_and_filename.c_str());
-// 	writeImage(img, s);
-// 	free(s);
-// 	std::cout << "Wrote file " << path_and_filename << "\n";
-// }
 
 void copyPixel(Pixel* to, Pixel from){
 	to->r = from.r;
@@ -129,12 +120,27 @@ typedef struct
 	std::vector<std::vector<std::vector<double > > > biggestDifferences;
 } DifferenceRecord;
 
+std::string intToString(int x, size_t numberOfDigits){
+	std::stringstream ss;
+	ss << std::setw(numberOfDigits) << std::setfill('0') << x;
+	return ss.str();
+}
+
+std::string intToString(int x){
+	std::stringstream ss;
+	ss << x;
+	return ss.str();
+}
+
+std::string doubleToString(double x, int fixed_precision){
+	std::stringstream ss;
+	ss << std::setprecision(1) << std::fixed << x;
+	return ss.str();
+}
 
 int main()
 {
-	std::cout << "LeastAverageImage Version 0.08\n";
-
-	//We want to re-create: a610_C_000009-58mostdiff_colorratio_rank6_squarescore
+	std::cout << "LeastAverageImage Version 0.09\n";
 
 	//Constants for now, could be inputs in a later version of this program.
 	const std::string INPUT_PATH = "G:\\LeastAverageImage inputs\\project 6 (smaller numbers of images)\\C\\C with renamed extras\\with me Day 2 teal\\";
@@ -143,16 +149,9 @@ int main()
 	const int LAST_FRAME = 59;
 	const std::string preAveragedImageFilename = "C:\\Code\\LeastAverageImage\\input_averages\\lynnflower_000001-000201avg.ppm";
 	
-	// const std::string INPUT_PATH = "G:\\LeastAverageImage inputs\\project 7 (Spaulding)\\tugboat_selections\\";
-	// const std::string SCENE_NAME = "tugboat_selections_";
-	// const int FIRST_FRAME = 0;
-	// const int LAST_FRAME = 5;
-	// const std::string preAveragedImageFilename = "C:\\Code\\LeastAverageImage\\input_averages\\tugboat_selections_000000-5avg.ppm";
 	const int INPUT_NUM_DIGITS = 6;
-	const std::string OUTPUT_PATH = "C:\\Code\\LeastAverageImage\\output\\C series 50 images each rank6squared\\with 1 frame of me\\me Day 2 teal\\";
+	const std::string OUTPUT_PATH = "C:\\Code\\LeastAverageImage\\output\\C series 50 images each rank6squared\\with 1 frame of me\\me Day 2 teal test2\\";
 	const bool SKIP_AVERAGING_PHASE = false;
-	//const bool COUNTDOWN = true;  //Remove or rename COUNT_ALL_THE_WAY_DOWN.
-	//const bool SQUARE_SCORE = false;
 	const bool INVERT_SCORES = false;
 	const bool HIDE_WARNINGS = false;
 
@@ -160,14 +159,15 @@ int main()
 	//powersOfScore.push_back(1.0);
 	powersOfScore.push_back(2.0);
 	// powersOfScore.push_back(2.5);
-	// powersOfScore.push_back(3.5);
+	powersOfScore.push_back(3.5);
 	// powersOfScore.push_back(4.5);
 	// powersOfScore.push_back(7.0);
 	// powersOfScore.push_back(10.0);  //will this cause crash??
 
 	std::vector<int> rankingsToSave;
 	// rankingsToSave.push_back(25);
-	// rankingsToSave.push_back(1);
+	rankingsToSave.push_back(1);
+	rankingsToSave.push_back(3);
 	rankingsToSave.push_back(6);
 	// rankingsToSave.push_back(10);
 	// rankingsToSave.push_back(18);
@@ -178,10 +178,10 @@ int main()
 	std::sort(rankingsToSave.begin(), rankingsToSave.end(), std::greater<int>());
 	const int NUM_PIXELS_TO_RANK = rankingsToSave[0];
 
-	const bool DO_REGULAR = false;
-	const bool DO_PERCEIVED_BRIGHTNESS = false;
+	const bool DO_REGULAR = true;
+	const bool DO_PERCEIVED_BRIGHTNESS = true;
 	const bool DO_COLOR_RATIO = true;
-	const bool DO_COMBO = false;
+	const bool DO_COMBO = true;
 	
 	if(DO_REGULAR + DO_PERCEIVED_BRIGHTNESS + DO_COLOR_RATIO + DO_COMBO == 0){
 		std::cerr << "ERROR: No difference functions selected.\n";
@@ -193,26 +193,23 @@ int main()
 	const int RED_INDEX = 0;
 	const int GREEN_INDEX = 1;
 	const int BLUE_INDEX = 2;
-	const int CHAR_LENGTH_LEEWAY = 100;
 
-	std::stringstream ss0;
-	ss0 << std::setw(INPUT_NUM_DIGITS) << std::setfill('0') << FIRST_FRAME << "-" << std::setw(INPUT_NUM_DIGITS) << std::setfill('0') << LAST_FRAME;
-	const std::string OUTPUT_TAG = SCENE_NAME + ss0.str();
+	const std::string OUTPUT_TAG = SCENE_NAME + intToString(FIRST_FRAME, INPUT_NUM_DIGITS) + "-" + intToString(LAST_FRAME, INPUT_NUM_DIGITS);
 
 
 	int numImages = 1 + LAST_FRAME - FIRST_FRAME;
-	char* filenameWithPath = (char*) malloc(INPUT_PATH.length() + SCENE_NAME.length() + INPUT_NUM_DIGITS + 4 + CHAR_LENGTH_LEEWAY);
+	std::string filenameWithPath;
 
 	//First pass: Sum all the values in the input files.
 	Image meanAverageImage;
-	sprintf(filenameWithPath, "%s%s%0*d.ppm", INPUT_PATH.c_str(), SCENE_NAME.c_str(), INPUT_NUM_DIGITS, FIRST_FRAME);
+	filenameWithPath = INPUT_PATH + SCENE_NAME + intToString(FIRST_FRAME, INPUT_NUM_DIGITS) + ".ppm";
 	Image img = readImage(filenameWithPath);
 	int height = img.height;
 	int width = img.width;
 	
 	if(SKIP_AVERAGING_PHASE){
 		std::cout << "SKIPPING AVERAGING PHASE. Reading in pre-averaged file.\n";
-		meanAverageImage = readImage(preAveragedImageFilename.c_str());
+		meanAverageImage = readImage(preAveragedImageFilename);
 		deleteImage(img);
 	}
 	else{
@@ -221,8 +218,8 @@ int main()
 		//I can't think of any efficient algorithm for median average with reasonable memory usage.
 		//Maybe such a thing is possible?  https://stackoverflow.com/questions/3372006/incremental-median-computation-with-max-memory-efficiency
 		std::vector<std::vector<std::vector< unsigned long long > > > totals;
-		//First image
 		
+		//First image
 		for(int i = 0; i < height; ++i){
 			totals.push_back(std::vector<std::vector<unsigned long long > >());
 			for(int j = 0; j < width; ++j){
@@ -236,7 +233,7 @@ int main()
 		
 		std::cout << "Averaging: Processed 1st image ok\n";
 		for(int x = FIRST_FRAME + 1; x <= LAST_FRAME; ++x){ //starting loop with 2nd image because we already did the first as a special case.
-			sprintf(filenameWithPath, "%s%s%0*d.ppm", INPUT_PATH.c_str(), SCENE_NAME.c_str(), INPUT_NUM_DIGITS, x);
+			filenameWithPath = INPUT_PATH + SCENE_NAME + intToString(x, INPUT_NUM_DIGITS) + ".ppm";
 			Image img = readImage(filenameWithPath);
 			
 			if(img.height != height || img.width != width){
@@ -263,39 +260,12 @@ int main()
 				meanAverageImage.map[i][j].b = (unsigned char) round(1.0 * totals[i][j][BLUE_INDEX] / numImages);
 			}
 		}
-		writeImage(meanAverageImage, (OUTPUT_PATH + OUTPUT_TAG + "avg.ppm").c_str());
+		writeImage(meanAverageImage, (OUTPUT_PATH + OUTPUT_TAG + "avg.ppm"));
 	}
-
-	//Set up all the rules/preferences for the different difference definitions.
-	//The 4 defs are: Regular (rename?), Perceived Brightness, Color Ratio, and Combo.
-
-	/*
-
-
-
-	std::vector<std::vector<std::vector<Pixel > > > mostDifferentPixels;
-	std::vector<std::vector<std::vector<double > > > biggestDifferences;*/
-	// std::vector<DifferenceRecord> drs(4, DifferenceRecord());
-
-	// drs[0].name = "Regular";
-	// drs[0].difference_function = difference_Regular;
-
-	// drs[1].name = "PerceivedBrightness";
-	// drs[1].difference_function = difference_PerceivedBrightness;
-
-	// drs[2].name = "ColorRatio";
-	// drs[2].difference_function = difference_ColorRatio;
-
-	// drs[3].name = "Combo";
-	// drs[3].difference_function = difference_Combined;
 
 	std::vector<DifferenceRecord> drs;
 
 	if(DO_REGULAR){
-		// drs.push_back(DifferenceRecord());
-		// size_t drs_index = drs.size() - 1;
-		// drs[drs_index].name = "Regular";
-
 		DifferenceRecord dr;
 		dr.name = "Regular";
 		dr.difference_function = difference_Regular;
@@ -320,7 +290,7 @@ int main()
 		drs.push_back(dr);
 	}
 
-	//Settings that are the same for all:
+	//Settings that are the same for all of the difference functions used:
 	for(size_t drs_index = 0; drs_index < drs.size(); ++drs_index){
 		//These are the same for now but may be separated later:
 		drs[drs_index].include_this_difference = true;  //For now, all runs will include all types of differences.
@@ -348,72 +318,15 @@ int main()
 		}
 	}
 
-
-
-
 	//Second pass: Find the most different.
 	std::cout << "Beginning differenciating phase. First image should take the longest.\n";
-
-	//Variables using regular difference:
-	// Image mostDifferentImage_regular = createImage(height, width);
-	// std::vector<std::vector<double > > biggestRegularDifference(height, std::vector<double>(width, 0));
-	// //Variables using color ratio difference:
-	// // Image mostDifferentImage_colorRatio = createImage(height, width);
-	// std::vector<std::vector<std::vector<Pixel > > > mostDifferentPixels_ColorRatio(height, std::vector<std::vector<Pixel > >(width, std::vector<Pixel>(NUM_PIXELS_TO_RANK, Pixel())));
-	// //std::vector<std::vector<std::vector<Pixel > > > mostDifferentPixels_ColorRatio;
-	// //std::vector<std::vector<std::vector<Pixel > > > mostDifferentPixels_ColorRatio(height, std::vector<std::vector<Pixel > >(width, std::vector<Pixel>));
-	// std::vector<std::vector<std::vector<double > > > biggestRatioDifference(height, std::vector<std::vector<double > >(width, std::vector<double>(NUM_PIXELS_TO_RANK, 0)));
-	
-
-	
-
-
-	// //Variables using perceived brightness difference:
-	// Image mostDifferentImage_Bright = createImage(height, width);
-	// std::vector<std::vector<double > > biggestBrightDifference(height, std::vector<double>(width, 0));
-	// // //Variables using combined difference:
-	// Image mostDifferentImage_Combined = createImage(height, width);
-	// std::vector<std::vector<double > > biggestCombinedDifference(height, std::vector<double>(width, 0));
-
-
 	for(int x = FIRST_FRAME; x <= LAST_FRAME; ++x){
-		sprintf(filenameWithPath, "%s%s%0*d.ppm", INPUT_PATH.c_str(), SCENE_NAME.c_str(), INPUT_NUM_DIGITS, x);
+		filenameWithPath = INPUT_PATH + SCENE_NAME + intToString(x, INPUT_NUM_DIGITS) + ".ppm";
 		Image img = readImage(filenameWithPath);
 		for(int i = 0; i < height; ++i){
 			for(int j = 0; j < width; ++j){
 				for(size_t drs_index = 0; drs_index < drs.size(); ++drs_index){
-					// double diff_regular = difference_Regular(meanAverageImage.map[i][j], img.map[i][j]);
-					// double diff_colorRatio = difference_ColorRatio(meanAverageImage.map[i][j], img.map[i][j]);
-					// double diff_bright = difference_PerceivedBrightness(meanAverageImage.map[i][j], img.map[i][j]);
-					// double diff_combined = difference_Combined(meanAverageImage.map[i][j], img.map[i][j]);
 					double diff = drs[drs_index].difference_function(meanAverageImage.map[i][j], img.map[i][j]);
-
-					// if(diff_regular > biggestRegularDifference[i][j]){
-					// 	biggestRegularDifference[i][j] = diff_regular;
-					// 	copyPixel(&mostDifferentImage_regular.map[i][j], &img.map[i][j]);
-					// }
-					// if(diff_colorRatio > biggestRatioDifference[i][j]){
-					// 	biggestRatioDifference[i][j] = diff_colorRatio;
-					// 	copyPixel(&mostDifferentImage_colorRatio.map[i][j], &img.map[i][j]);
-					// }
-					// if(diff_colorRatio > biggestRatioDifference[i][j][NUM_PIXELS_TO_RANK - 1]){
-					// 	int rank = NUM_PIXELS_TO_RANK - 1;
-					// 	while(rank >= 0 && diff_colorRatio > biggestRatioDifference[i][j][rank]){
-					// 		--rank;
-					// 	}
-					// 	++rank;
-					// 	//std::cout << "Rank of " << rank << "\n";
-					// 	if(rank < 0 || rank >= NUM_PIXELS_TO_RANK){
-					// 		std::cerr << "ERROR: rANK = " << rank << " for (" << i << ", " << j << ")\n";
-					// 		exit(1);
-					// 	}
-					// 	for(size_t backwards_iterator = NUM_PIXELS_TO_RANK - 1; backwards_iterator > rank; --backwards_iterator){
-					// 		biggestRatioDifference[i][j][backwards_iterator] = biggestRatioDifference[i][j][backwards_iterator - 1];
-					// 		copyPixel(&mostDifferentPixels_ColorRatio[i][j][backwards_iterator], &mostDifferentPixels_ColorRatio[i][j][backwards_iterator - 1]);
-					// 	}
-					// 	biggestRatioDifference[i][j][rank] = diff_colorRatio;
-					// 	copyPixel(&mostDifferentPixels_ColorRatio[i][j][rank], &img.map[i][j]);
-					// }
 
 					if(diff > drs[drs_index].biggestDifferences[i][j][drs[drs_index].num_pixels_to_rank - 1]){  ///almost positive you can remove the if-statement here.
 						int rank = drs[drs_index].num_pixels_to_rank - 1;
@@ -431,17 +344,6 @@ int main()
 						drs[drs_index].biggestDifferences[i][j][rank] = diff;
 						copyPixel(&drs[drs_index].mostDifferentPixels[i][j][rank], &img.map[i][j]);
 					}
-
-
-
-					// if(diff_bright > biggestBrightDifference[i][j]){
-					// 	biggestBrightDifference[i][j] = diff_bright;
-					// 	copyPixel(&mostDifferentImage_Bright.map[i][j], &img.map[i][j]);
-					// }
-					// if(diff_combined > biggestCombinedDifference[i][j]){
-					// 	biggestCombinedDifference[i][j] = diff_combined;
-					// 	copyPixel(&mostDifferentImage_Combined.map[i][j], &img.map[i][j]);
-					// }
 				}
 			}
 		}
@@ -449,68 +351,7 @@ int main()
 		std::cout << "Differenciating: Processed image #" << (x - FIRST_FRAME + 1) << " of " << numImages << "\n";
 	}
 
-
-	// int lastloop = 0;
-	// if(COUNTDOWN){
-	// 	lastloop = NUM_PIXELS_TO_RANK - 1;
-	// }
-	// for(int rank_this_many_fewer = 0; rank_this_many_fewer <= lastloop; ++rank_this_many_fewer){
-	// 	int num_pixels_to_rank_this_round = NUM_PIXELS_TO_RANK - rank_this_many_fewer;
-	// 	for(size_t score_power_index = 0; score_power_index < powersOfScore.size(); ++score_power_index){
-	// 		Image mostDifferentImage_colorRatio = createImage(height, width);
-	// 		for(int i = 0; i < height; ++i){
-	// 			for(int j = 0; j < width; ++j){
-	// 				double totalScore = 0.0;
-	// 				for(int k = 0; k < num_pixels_to_rank_this_round; ++k){
-	// 					totalScore += pow(biggestRatioDifference[i][j][k], powersOfScore[score_power_index]);
-	// 				}
-	// 				if(totalScore == 0.0){
-	// 					std::cout << "WARNING: All pixels at position " << i << ", " << j << " are equal to the average.\n";
-	// 					copyPixel(&mostDifferentImage_colorRatio.map[i][j], &meanAverageImage.map[i][j]);
-	// 				}
-	// 				else{
-	// 					//std::vector<double> weights;
-	// 					std::vector<double> newRGB(NUM_COLOR_CHANNELS, 0.0);
-	// 					for(int k = 0; k < num_pixels_to_rank_this_round; ++k){
-	// 						//weights.push_back(biggestRatioDifference[i][j][k] / totalScore);
-	// 						double weight = pow(biggestRatioDifference[i][j][k], powersOfScore[score_power_index]) / totalScore;
-	// 						if(INVERT_SCORES){
-	// 							weight = 1 - weight;
-	// 						}
-	// 						newRGB[RED_INDEX] += mostDifferentPixels_ColorRatio[i][j][k].r * weight;
-	// 						newRGB[GREEN_INDEX] += mostDifferentPixels_ColorRatio[i][j][k].g * weight;
-	// 						newRGB[BLUE_INDEX] += mostDifferentPixels_ColorRatio[i][j][k].b * weight;
-	// 					}
-	// 					mostDifferentImage_colorRatio.map[i][j].r = (unsigned char) round(newRGB[RED_INDEX]);
-	// 					mostDifferentImage_colorRatio.map[i][j].g = (unsigned char) round(newRGB[GREEN_INDEX]);
-	// 					mostDifferentImage_colorRatio.map[i][j].b = (unsigned char) round(newRGB[BLUE_INDEX]);
-	// 				}
-	// 			}
-	// 		}
-	// 		std::stringstream ss1;
-	// 		ss1 << num_pixels_to_rank_this_round;
-	// 		std::string numPixelsToRankAsString = ss1.str();
-	// 		std::string outputFilenameColorRatio = OUTPUT_PATH + OUTPUT_TAG + "mostdiff_colorratio_rank" + numPixelsToRankAsString;
-	// 		std::stringstream ss2;
-	// 		ss2 << std::setprecision(1) << std::fixed << powersOfScore[score_power_index];
-	// 		std::string powerAsString = ss2.str();
-	// 		outputFilenameColorRatio += "_power" + powerAsString;
-	// 		if(INVERT_SCORES){
-	// 			outputFilenameColorRatio += "_invertscore";
-	// 		}
-	// 		outputFilenameColorRatio += ".ppm";
-	// 		writeImage(mostDifferentImage_colorRatio, outputFilenameColorRatio);
-	// 		deleteImage(mostDifferentImage_colorRatio);
-	// 	}
-	// }
-
 	for(size_t drs_index = 0; drs_index < drs.size(); ++drs_index){
-		// int lastloop = 0;
-		// if(drs[drs_index].countdown){
-		// 	lastloop = drs[drs_index].num_pixels_to_rank - 1;
-		// }
-		// for(int rank_this_many_fewer = 0; rank_this_many_fewer <= lastloop; ++rank_this_many_fewer){
-		// 	int num_pixels_to_rank_this_round = drs[drs_index].num_pixels_to_rank - rank_this_many_fewer;
 		for(size_t ranking_index = 0; ranking_index < drs[drs_index].rankings_to_save.size(); ++ranking_index){
 			int num_pixels_to_rank_this_round = drs[drs_index].rankings_to_save[ranking_index];
 			for(size_t sp_index = 0; sp_index < drs[drs_index].score_powers.size(); ++sp_index){
@@ -542,13 +383,9 @@ int main()
 						}
 					}
 				}
-				std::stringstream ss1;
-				ss1 << num_pixels_to_rank_this_round;
-				std::string numPixelsToRankAsString = ss1.str();
+				std::string numPixelsToRankAsString = intToString(num_pixels_to_rank_this_round);
 				std::string outputFilename = OUTPUT_PATH + OUTPUT_TAG + drs[drs_index].name + "_rank" + numPixelsToRankAsString;
-				std::stringstream ss2;
-				ss2 << std::setprecision(1) << std::fixed << drs[drs_index].score_powers[sp_index];
-				std::string powerAsString = ss2.str();
+				std::string powerAsString = doubleToString(drs[drs_index].score_powers[sp_index], 1);
 				outputFilename += "_power" + powerAsString;
 				if(drs[drs_index].invert_scores){
 					outputFilename += "_invertscore";
@@ -559,20 +396,6 @@ int main()
 			}
 		}
 	}
-
-
-
-
-
-
-	// writeImage(mostDifferentImage_regular, OUTPUT_PATH + OUTPUT_TAG + "mostdiff_regular.ppm");
-	
-	// writeImage(mostDifferentImage_Bright, OUTPUT_PATH + OUTPUT_TAG + "mostdiff_brightness.ppm");
-	// writeImage(mostDifferentImage_Combined, OUTPUT_PATH + OUTPUT_TAG + "mostdiff_combined_weighed4.ppm");  //easymath, hardmath, and weighed1.
-
-	// deleteImage(mostDifferentImage_regular);
-	// deleteImage(mostDifferentImage_Bright);
-	// deleteImage(mostDifferentImage_Combined);
 
 	return 0;
 }

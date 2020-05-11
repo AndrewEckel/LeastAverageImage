@@ -164,6 +164,11 @@ Image readImage(const char *filename)
 	return img;
 }
 
+Image readImage(const std::string filename)
+{
+	return readImage(filename.c_str());
+}
+
 // Write an image to a file. The file format (binary PBM, PGM, or PPM) is automatically
 // chosen based on the given file name. For PBM and PGM files, only the intensity
 // (i) information is used, and for PPM files, only r, g, and b are relevant.
@@ -219,6 +224,11 @@ void writeImage(Image img, const char *filename)
 	fwrite((void *) temp, 1, mapsize, f);
 	fclose(f);
 	free(temp);
+}
+
+void writeImage(Image img, const std::string filename)
+{
+	return writeImage(img, filename.c_str());
 }
 
 
