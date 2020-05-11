@@ -1,4 +1,5 @@
 *.exe
+disinclude
 output/**/*.ppm
 output/**/*.tif
 output/**/*.jpg

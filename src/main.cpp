@@ -11,7 +11,8 @@
 #include <algorithm>
 
 #include "netpbm.h"
-//#include "ini.h"  //not yet used
+#include "utility.h"
+#include "iniparser.h"
 
 void copyPixel(Pixel* to, Pixel from){
 	to->r = from.r;
@@ -137,78 +138,81 @@ std::string doubleToString(double x, int fixed_precision){
 	return ss.str();
 }
 
-int main()
+int main(int argc, char *argv[])
 {
-	std::cout << "LeastAverageImage Version 0.10\n";
+	std::cout << "LeastAverageImage Version 0.11\n";
 
-	//Constants for now, could be inputs in a later version of this program.
-	const std::string INPUT_PATH = "G:\\LeastAverageImage inputs\\project 6 (smaller numbers of images)\\C\\C with renamed extras\\with me Day 2 teal\\";
-	const std::string SCENE_NAME = "a610_C_";
-	const int FIRST_FRAME = 9;
-	const int LAST_FRAME = 59;
-	const std::string preAveragedImageFilename = "C:\\Code\\LeastAverageImage\\input_averages\\lynnflower_000001-000201avg.ppm";
-	
-	const int INPUT_NUM_DIGITS = 6;
-	const std::string OUTPUT_PATH = "C:\\Code\\LeastAverageImage\\output\\C series 50 images each rank6squared\\with 1 frame of me\\me Day 2 teal test3\\";
-	const bool SKIP_AVERAGING_PHASE = false;
-	const bool INVERT_SCORES = false;
-	const bool HIDE_WARNINGS = false;
+	std::string settingsFilenameAndPath;
+	if(argc < 2){
+		settingsFilenameAndPath = "../input/settings.ini";
+	}
+	else{
+		settingsFilenameAndPath = argv[1];
+	}
+	ini opts_ini(settingsFilenameAndPath);
+	std::cout << "Parsing input file " << settingsFilenameAndPath << "\n";
 
-	std::vector<double> powersOfScore;
-	//powersOfScore.push_back(1.0);
-	powersOfScore.push_back(2.0);
-	// powersOfScore.push_back(2.5);
-	powersOfScore.push_back(3.5);
-	// powersOfScore.push_back(4.5);
-	// powersOfScore.push_back(7.0);
-	// powersOfScore.push_back(10.0);  //will this cause crash??
+	//General settings
+	const std::string OUTPUT_PATH = Utility::endWithSlash(opts_ini.at("general_output_path"));
+	const bool INVERT_SCORES = Utility::stob(opts_ini.at("general_invert_scores"));
+	const bool HIDE_WARNINGS = Utility::stob(opts_ini.at("general_hide_warnings"));
 
-	std::vector<int> rankingsToSave;
-	// rankingsToSave.push_back(25);
-	rankingsToSave.push_back(1);
-	rankingsToSave.push_back(3);
-	rankingsToSave.push_back(6);
-	// rankingsToSave.push_back(10);
-	// rankingsToSave.push_back(18);
-	// rankingsToSave.push_back(80);  //will THIS cause crash????
-	// rankingsToSave.push_back(40);
-	// rankingsToSave.push_back(35);
-	// rankingsToSave.push_back(30);
-	std::sort(rankingsToSave.begin(), rankingsToSave.end(), std::greater<int>());
-	const int NUM_PIXELS_TO_RANK = rankingsToSave[0];
+	const std::string split_chars = ",";
+	std::vector<double> powersOfScore = Utility::toDoubles(Utility::splitByChars(opts_ini.at("general_powers_of_score"), split_chars), true);
+	std::vector<int> rankingsToSave = Utility::toInts(Utility::splitByChars(opts_ini.at("general_rankings_to_save"), split_chars), true);
+	std::sort(rankingsToSave.begin(), rankingsToSave.end(), std::greater<int>());  //Reverse-sort numbers of rankings.
+	const int NUM_PIXELS_TO_RANK = rankingsToSave[0];  //Whater is the greatest number of rankings desired, that's how many we'll need to do.
 
-	const bool DO_REGULAR = true;
-	const bool DO_PERCEIVED_BRIGHTNESS = true;
-	const bool DO_COLOR_RATIO = true;
-	const bool DO_COMBO = true;
-	
+	//Which difference functions should we use?
+	const bool DO_REGULAR = Utility::stob(opts_ini.at("difference_functions_do_regular"));
+	const bool DO_PERCEIVED_BRIGHTNESS = Utility::stob(opts_ini.at("difference_functions_do_perceived_brightness"));
+	const bool DO_COLOR_RATIO = Utility::stob(opts_ini.at("difference_functions_do_color_ratio"));
+	const bool DO_COMBO = Utility::stob(opts_ini.at("difference_functions_do_combo"));
+
 	if(DO_REGULAR + DO_PERCEIVED_BRIGHTNESS + DO_COLOR_RATIO + DO_COMBO == 0){
 		std::cerr << "ERROR: No difference functions selected.\n";
 		exit(1);
 	}
-	
-	//Really constants
+
+	//Pre-Averaged
+	const bool SKIP_AVERAGING_PHASE = Utility::stob(opts_ini.at("pre_averaged_skip_averaging_phase"));
+	std::string preAveragedFilenameWithPath;
+	if(SKIP_AVERAGING_PHASE){
+		preAveragedFilenameWithPath = Utility::endWithSlash(opts_ini.at("pre_averaged_pre_averaged_path")) +
+	                                                opts_ini.at("pre_averaged_pre_averaged_filename");
+	}
+
+	//Album mode settings
+	//(New mode coming soon...)
+	const std::string ALBUM_INPUT_PATH = Utility::endWithSlash(opts_ini.at("album_mode_input_path"));
+	const std::string ALBUM_NAME = opts_ini.at("album_mode_name");
+	const int FIRST_FRAME = std::stoi(opts_ini.at("album_mode_first_frame"));
+	const int LAST_FRAME = std::stoi(opts_ini.at("album_mode_last_frame"));
+	const int ALBUM_NUM_DIGITS = std::stoi(opts_ini.at("album_mode_num_digits"));
+
+	std::cout << "Finished parsing.\n";
+
+	//Constants
 	const int NUM_COLOR_CHANNELS = 3; //R,G,B.
 	const int RED_INDEX = 0;
 	const int GREEN_INDEX = 1;
 	const int BLUE_INDEX = 2;
 
-	const std::string OUTPUT_TAG = SCENE_NAME + intToString(FIRST_FRAME, INPUT_NUM_DIGITS) + "-" + intToString(LAST_FRAME, INPUT_NUM_DIGITS);
+	const int NUM_IMAGES = 1 + LAST_FRAME - FIRST_FRAME;
+	const std::string OUTPUT_TAG = ALBUM_NAME + intToString(FIRST_FRAME, ALBUM_NUM_DIGITS) + "-" + intToString(LAST_FRAME, ALBUM_NUM_DIGITS);
 
-
-	int numImages = 1 + LAST_FRAME - FIRST_FRAME;
 	std::string filenameWithPath;
 
 	//First pass: Sum all the values in the input files.
 	Image meanAverageImage;
-	filenameWithPath = INPUT_PATH + SCENE_NAME + intToString(FIRST_FRAME, INPUT_NUM_DIGITS) + ".ppm";
+	filenameWithPath = ALBUM_INPUT_PATH + ALBUM_NAME + intToString(FIRST_FRAME, ALBUM_NUM_DIGITS) + ".ppm";
 	Image img = readImage(filenameWithPath);
 	int height = img.height;
 	int width = img.width;
 	
 	if(SKIP_AVERAGING_PHASE){
 		std::cout << "SKIPPING AVERAGING PHASE. Reading in pre-averaged file.\n";
-		meanAverageImage = readImage(preAveragedImageFilename);
+		meanAverageImage = readImage(preAveragedFilenameWithPath);
 		deleteImage(img);
 	}
 	else{
@@ -232,7 +236,7 @@ int main()
 		
 		std::cout << "Averaging: Processed 1st image ok\n";
 		for(int x = FIRST_FRAME + 1; x <= LAST_FRAME; ++x){ //starting loop with 2nd image because we already did the first as a special case.
-			filenameWithPath = INPUT_PATH + SCENE_NAME + intToString(x, INPUT_NUM_DIGITS) + ".ppm";
+			filenameWithPath = ALBUM_INPUT_PATH + ALBUM_NAME + intToString(x, ALBUM_NUM_DIGITS) + ".ppm";
 			Image img = readImage(filenameWithPath);
 			
 			if(img.height != height || img.width != width){
@@ -249,14 +253,14 @@ int main()
 				}
 			}
 			deleteImage(img);
-			std::cout << "Averaging: Processed image #" << (x - FIRST_FRAME + 1) << " of " << numImages << "\n";
+			std::cout << "Averaging: Processed image #" << (x - FIRST_FRAME + 1) << " of " << NUM_IMAGES << "\n";
 		}
 		meanAverageImage = createImage(height, width);
 		for(int i = 0; i < height; ++i){
 			for(int j = 0; j < width; ++j){
-				meanAverageImage.map[i][j].r = (unsigned char) round(1.0 * totals[i][j][RED_INDEX] / numImages);
-				meanAverageImage.map[i][j].g = (unsigned char) round(1.0 * totals[i][j][GREEN_INDEX] / numImages);
-				meanAverageImage.map[i][j].b = (unsigned char) round(1.0 * totals[i][j][BLUE_INDEX] / numImages);
+				meanAverageImage.map[i][j].r = (unsigned char) round(1.0 * totals[i][j][RED_INDEX] / NUM_IMAGES);
+				meanAverageImage.map[i][j].g = (unsigned char) round(1.0 * totals[i][j][GREEN_INDEX] / NUM_IMAGES);
+				meanAverageImage.map[i][j].b = (unsigned char) round(1.0 * totals[i][j][BLUE_INDEX] / NUM_IMAGES);
 			}
 		}
 		writeImage(meanAverageImage, (OUTPUT_PATH + OUTPUT_TAG + "avg.ppm"));
@@ -310,7 +314,7 @@ int main()
 	//Second pass: Find the most different.
 	std::cout << "Beginning differenciating phase. First image should take the longest.\n";
 	for(int x = FIRST_FRAME; x <= LAST_FRAME; ++x){
-		filenameWithPath = INPUT_PATH + SCENE_NAME + intToString(x, INPUT_NUM_DIGITS) + ".ppm";
+		filenameWithPath = ALBUM_INPUT_PATH + ALBUM_NAME + intToString(x, ALBUM_NUM_DIGITS) + ".ppm";
 		Image img = readImage(filenameWithPath);
 		for(int i = 0; i < height; ++i){
 			for(int j = 0; j < width; ++j){
@@ -337,7 +341,7 @@ int main()
 			}
 		}
 		deleteImage(img);
-		std::cout << "Differenciating: Processed image #" << (x - FIRST_FRAME + 1) << " of " << numImages << "\n";
+		std::cout << "Differenciating: Processed image #" << (x - FIRST_FRAME + 1) << " of " << NUM_IMAGES << "\n";
 	}
 
 	for(size_t drs_index = 0; drs_index < drs.size(); ++drs_index){
