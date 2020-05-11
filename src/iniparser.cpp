@@ -20,6 +20,17 @@ void ini::parse(const std::string &iniFile)
 	}
 }
 
+std::string ini::atat(const std::string s)
+{
+	//Identical to the "at" function, except that if there is an error, it prints a nice error message before throwing it.
+	try{
+		return at(s);
+	} catch(std::exception e){
+		std::cerr << "INI Parser: Error finding entry \"" << s << "\"\n";
+		throw e;
+	}
+}
+
 // Constructor
 ini::ini(const std::string &iniFile)
 {

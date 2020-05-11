@@ -140,7 +140,7 @@ std::string doubleToString(double x, int fixed_precision){
 
 int main(int argc, char *argv[])
 {
-	std::cout << "LeastAverageImage Version 0.11\n";
+	std::cout << "LeastAverageImage Version 0.12\n";
 
 	std::string settingsFilenameAndPath;
 	if(argc < 2){
@@ -153,21 +153,21 @@ int main(int argc, char *argv[])
 	std::cout << "Parsing input file " << settingsFilenameAndPath << "\n";
 
 	//General settings
-	const std::string OUTPUT_PATH = Utility::endWithSlash(opts_ini.at("general_output_path"));
-	const bool INVERT_SCORES = Utility::stob(opts_ini.at("general_invert_scores"));
-	const bool HIDE_WARNINGS = Utility::stob(opts_ini.at("general_hide_warnings"));
-
+	const std::string OUTPUT_PATH = Utility::endWithSlash(opts_ini.atat("general_output_path"));
+	const bool INVERT_SCORES = Utility::stob(opts_ini.atat("general_invert_scores"));
+	const bool HIDE_WARNINGS = Utility::stob(opts_ini.atat("general_hide_warnings"));
+	
 	const std::string split_chars = ",";
-	std::vector<double> powersOfScore = Utility::toDoubles(Utility::splitByChars(opts_ini.at("general_powers_of_score"), split_chars), true);
-	std::vector<int> rankingsToSave = Utility::toInts(Utility::splitByChars(opts_ini.at("general_rankings_to_save"), split_chars), true);
+	std::vector<double> powersOfScore = Utility::toDoubles(Utility::splitByChars(opts_ini.atat("general_powers_of_score"), split_chars), true);
+	std::vector<int> rankingsToSave = Utility::toInts(Utility::splitByChars(opts_ini.atat("general_rankings_to_save"), split_chars), true);
 	std::sort(rankingsToSave.begin(), rankingsToSave.end(), std::greater<int>());  //Reverse-sort numbers of rankings.
 	const int NUM_PIXELS_TO_RANK = rankingsToSave[0];  //Whater is the greatest number of rankings desired, that's how many we'll need to do.
 
 	//Which difference functions should we use?
-	const bool DO_REGULAR = Utility::stob(opts_ini.at("difference_functions_do_regular"));
-	const bool DO_PERCEIVED_BRIGHTNESS = Utility::stob(opts_ini.at("difference_functions_do_perceived_brightness"));
-	const bool DO_COLOR_RATIO = Utility::stob(opts_ini.at("difference_functions_do_color_ratio"));
-	const bool DO_COMBO = Utility::stob(opts_ini.at("difference_functions_do_combo"));
+	const bool DO_REGULAR = Utility::stob(opts_ini.atat("difference_functions_do_regular"));
+	const bool DO_PERCEIVED_BRIGHTNESS = Utility::stob(opts_ini.atat("difference_functions_do_perceived_brightness"));
+	const bool DO_COLOR_RATIO = Utility::stob(opts_ini.atat("difference_functions_do_color_ratio"));
+	const bool DO_COMBO = Utility::stob(opts_ini.atat("difference_functions_do_combo"));
 
 	if(DO_REGULAR + DO_PERCEIVED_BRIGHTNESS + DO_COLOR_RATIO + DO_COMBO == 0){
 		std::cerr << "ERROR: No difference functions selected.\n";
@@ -175,20 +175,20 @@ int main(int argc, char *argv[])
 	}
 
 	//Pre-Averaged
-	const bool SKIP_AVERAGING_PHASE = Utility::stob(opts_ini.at("pre_averaged_skip_averaging_phase"));
+	const bool SKIP_AVERAGING_PHASE = Utility::stob(opts_ini.atat("pre_averaged_skip_averaging_phase"));
 	std::string preAveragedFilenameWithPath;
 	if(SKIP_AVERAGING_PHASE){
-		preAveragedFilenameWithPath = Utility::endWithSlash(opts_ini.at("pre_averaged_pre_averaged_path")) +
-	                                                opts_ini.at("pre_averaged_pre_averaged_filename");
+		preAveragedFilenameWithPath = Utility::endWithSlash(opts_ini.atat("pre_averaged_pre_averaged_path")) +
+	                                                opts_ini.atat("pre_averaged_pre_averaged_filename");
 	}
 
 	//Album mode settings
 	//(New mode coming soon...)
-	const std::string ALBUM_INPUT_PATH = Utility::endWithSlash(opts_ini.at("album_mode_input_path"));
-	const std::string ALBUM_NAME = opts_ini.at("album_mode_name");
-	const int FIRST_FRAME = std::stoi(opts_ini.at("album_mode_first_frame"));
-	const int LAST_FRAME = std::stoi(opts_ini.at("album_mode_last_frame"));
-	const int ALBUM_NUM_DIGITS = std::stoi(opts_ini.at("album_mode_num_digits"));
+	const std::string ALBUM_INPUT_PATH = Utility::endWithSlash(opts_ini.atat("album_mode_input_path"));
+	const std::string ALBUM_NAME = opts_ini.atat("album_mode_name");
+	const int FIRST_FRAME = std::stoi(opts_ini.atat("album_mode_first_frame"));
+	const int LAST_FRAME = std::stoi(opts_ini.atat("album_mode_last_frame"));
+	const int ALBUM_NUM_DIGITS = std::stoi(opts_ini.atat("album_mode_num_digits"));
 
 	std::cout << "Finished parsing.\n";
 
