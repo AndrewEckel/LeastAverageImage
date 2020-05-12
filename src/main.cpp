@@ -140,7 +140,7 @@ std::string doubleToString(double x, int fixed_precision){
 
 int main(int argc, char *argv[])
 {
-	std::cout << "LeastAverageImage Version 0.12\n";
+	std::cout << "LeastAverageImage Version 0.13\n\n";
 
 	std::string settingsFilenameAndPath;
 	if(argc < 2){
@@ -156,7 +156,7 @@ int main(int argc, char *argv[])
 	const std::string OUTPUT_PATH = Utility::endWithSlash(opts_ini.atat("general_output_path"));
 	const bool INVERT_SCORES = Utility::stob(opts_ini.atat("general_invert_scores"));
 	const bool HIDE_WARNINGS = Utility::stob(opts_ini.atat("general_hide_warnings"));
-	
+
 	const std::string split_chars = ",";
 	std::vector<double> powersOfScore = Utility::toDoubles(Utility::splitByChars(opts_ini.atat("general_powers_of_score"), split_chars), true);
 	std::vector<int> rankingsToSave = Utility::toInts(Utility::splitByChars(opts_ini.atat("general_rankings_to_save"), split_chars), true);
@@ -190,6 +190,11 @@ int main(int argc, char *argv[])
 	const int LAST_FRAME = std::stoi(opts_ini.atat("album_mode_last_frame"));
 	const int ALBUM_NUM_DIGITS = std::stoi(opts_ini.atat("album_mode_num_digits"));
 
+	if(LAST_FRAME <= FIRST_FRAME || FIRST_FRAME < 0){
+		std::cerr << "Invalid frame numbers for album mode: " << FIRST_FRAME << " through " << LAST_FRAME << "\n";
+		exit(1);
+	}
+
 	std::cout << "Finished parsing.\n";
 
 	//Constants
@@ -199,65 +204,73 @@ int main(int argc, char *argv[])
 	const int BLUE_INDEX = 2;
 
 	const int NUM_IMAGES = 1 + LAST_FRAME - FIRST_FRAME;
+	//Album mode output tag
 	const std::string OUTPUT_TAG = ALBUM_NAME + intToString(FIRST_FRAME, ALBUM_NUM_DIGITS) + "-" + intToString(LAST_FRAME, ALBUM_NUM_DIGITS);
 
-	std::string filenameWithPath;
+	std::vector<std::string> inputFilenames; //INCLUDES PATHS
+	//Album mode
+	for(int x = FIRST_FRAME; x <= LAST_FRAME; ++x){
+		inputFilenames.push_back(ALBUM_INPUT_PATH + ALBUM_NAME + intToString(x, ALBUM_NUM_DIGITS) + ".ppm");
+	}
+	if(inputFilenames.size() != NUM_IMAGES){
+		std::cerr << "Logic error: Counted " << inputFilenames.size() << " of expected " << NUM_IMAGES << " input images.\n";
+		exit(1);
+	}
+
+	Image first_image = readImage(inputFilenames[0]);
+	const int HEIGHT = first_image.height;
+	const int WIDTH = first_image.width;
 
 	//First pass: Sum all the values in the input files.
 	Image meanAverageImage;
-	filenameWithPath = ALBUM_INPUT_PATH + ALBUM_NAME + intToString(FIRST_FRAME, ALBUM_NUM_DIGITS) + ".ppm";
-	Image img = readImage(filenameWithPath);
-	int height = img.height;
-	int width = img.width;
 	
 	if(SKIP_AVERAGING_PHASE){
-		std::cout << "SKIPPING AVERAGING PHASE. Reading in pre-averaged file.\n";
+		std::cout << "\nSKIPPING AVERAGING PHASE. Reading in pre-averaged file.\n";
 		meanAverageImage = readImage(preAveragedFilenameWithPath);
-		deleteImage(img);
+		deleteImage(first_image);
 	}
 	else{
-		std::cout << "Beginning averaging phase. First image should take the longest.\n";
+		std::cout << "\nBeginning averaging phase. First image should take the longest.\n";
 		//For now, averaging means a mean average.
 		//I can't think of any efficient algorithm for median average with reasonable memory usage.
 		//Maybe such a thing is possible?  https://stackoverflow.com/questions/3372006/incremental-median-computation-with-max-memory-efficiency
 		std::vector<std::vector<std::vector< unsigned long long > > > totals;
 		
 		//First image
-		for(int i = 0; i < height; ++i){
+		for(int i = 0; i < HEIGHT; ++i){
 			totals.push_back(std::vector<std::vector<unsigned long long > >());
-			for(int j = 0; j < width; ++j){
+			for(int j = 0; j < WIDTH; ++j){
 				totals[i].push_back(std::vector<unsigned long long >());
-				totals[i][j].push_back(img.map[i][j].r); //0
-				totals[i][j].push_back(img.map[i][j].g); //1
-				totals[i][j].push_back(img.map[i][j].b); //2
+				totals[i][j].push_back(first_image.map[i][j].r); //0
+				totals[i][j].push_back(first_image.map[i][j].g); //1
+				totals[i][j].push_back(first_image.map[i][j].b); //2
 			}
 		}
-		deleteImage(img);
+		deleteImage(first_image);
 		
 		std::cout << "Averaging: Processed 1st image ok\n";
-		for(int x = FIRST_FRAME + 1; x <= LAST_FRAME; ++x){ //starting loop with 2nd image because we already did the first as a special case.
-			filenameWithPath = ALBUM_INPUT_PATH + ALBUM_NAME + intToString(x, ALBUM_NUM_DIGITS) + ".ppm";
-			Image img = readImage(filenameWithPath);
+		for(int x = 1; x < NUM_IMAGES; ++x){  //starting loop with the second image because we already did the first as a special case
+			Image img = readImage(inputFilenames[x]);
 			
-			if(img.height != height || img.width != width){
-				std::cerr << "ERROR: Image #" << x << " dimensions do not match those of image #" << FIRST_FRAME << "!\n";
+			if(img.height != HEIGHT || img.width != WIDTH){
+				std::cerr << "ERROR: Image  \"" << inputFilenames[x] << "\" dimensions do not match those of image \"" << inputFilenames[0] << "\".\n";
 				deleteImage(img);
 				exit(1);
 			}
 
-			for(int i = 0; i < height; ++i){
-				for(int j = 0; j < width; ++j){
+			for(int i = 0; i < HEIGHT; ++i){
+				for(int j = 0; j < WIDTH; ++j){
 					totals[i][j][RED_INDEX] += img.map[i][j].r;
 					totals[i][j][GREEN_INDEX] += img.map[i][j].g;
 					totals[i][j][BLUE_INDEX] += img.map[i][j].b;
 				}
 			}
 			deleteImage(img);
-			std::cout << "Averaging: Processed image #" << (x - FIRST_FRAME + 1) << " of " << NUM_IMAGES << "\n";
+			std::cout << "Averaging: Processed image #" << x + 1 << " of " << NUM_IMAGES << "\n";
 		}
-		meanAverageImage = createImage(height, width);
-		for(int i = 0; i < height; ++i){
-			for(int j = 0; j < width; ++j){
+		meanAverageImage = createImage(HEIGHT, WIDTH);
+		for(int i = 0; i < HEIGHT; ++i){
+			for(int j = 0; j < WIDTH; ++j){
 				meanAverageImage.map[i][j].r = (unsigned char) round(1.0 * totals[i][j][RED_INDEX] / NUM_IMAGES);
 				meanAverageImage.map[i][j].g = (unsigned char) round(1.0 * totals[i][j][GREEN_INDEX] / NUM_IMAGES);
 				meanAverageImage.map[i][j].b = (unsigned char) round(1.0 * totals[i][j][BLUE_INDEX] / NUM_IMAGES);
@@ -307,17 +320,16 @@ int main(int argc, char *argv[])
 		drs[drs_index].rankings_to_save = rankingsToSave;
 
 		//Initialize mostDifferentPixels (all white) and biggestDifferences (all zeroes).
-		drs[drs_index].mostDifferentPixels = std::vector<std::vector<std::vector<Pixel > > >(height, std::vector<std::vector<Pixel > >(width, std::vector<Pixel>(NUM_PIXELS_TO_RANK, white)));
-		drs[drs_index].biggestDifferences = std::vector<std::vector<std::vector<double > > >(height, std::vector<std::vector<double > >(width, std::vector<double>(NUM_PIXELS_TO_RANK, 0)));
+		drs[drs_index].mostDifferentPixels = std::vector<std::vector<std::vector<Pixel > > >(HEIGHT, std::vector<std::vector<Pixel > >(WIDTH, std::vector<Pixel>(NUM_PIXELS_TO_RANK, white)));
+		drs[drs_index].biggestDifferences = std::vector<std::vector<std::vector<double > > >(HEIGHT, std::vector<std::vector<double > >(WIDTH, std::vector<double>(NUM_PIXELS_TO_RANK, 0)));
 	}
 
 	//Second pass: Find the most different.
-	std::cout << "Beginning differenciating phase. First image should take the longest.\n";
-	for(int x = FIRST_FRAME; x <= LAST_FRAME; ++x){
-		filenameWithPath = ALBUM_INPUT_PATH + ALBUM_NAME + intToString(x, ALBUM_NUM_DIGITS) + ".ppm";
-		Image img = readImage(filenameWithPath);
-		for(int i = 0; i < height; ++i){
-			for(int j = 0; j < width; ++j){
+	std::cout << "\nBeginning differentiating phase. First image should take the longest.\n";
+	for(int x = 0; x < NUM_IMAGES; ++x){
+		Image img = readImage(inputFilenames[x]);
+		for(int i = 0; i < HEIGHT; ++i){
+			for(int j = 0; j < WIDTH; ++j){
 				for(size_t drs_index = 0; drs_index < drs.size(); ++drs_index){
 					double diff = drs[drs_index].difference_function(meanAverageImage.map[i][j], img.map[i][j]);
 
@@ -341,9 +353,10 @@ int main(int argc, char *argv[])
 			}
 		}
 		deleteImage(img);
-		std::cout << "Differenciating: Processed image #" << (x - FIRST_FRAME + 1) << " of " << NUM_IMAGES << "\n";
+		std::cout << "Differentiating: Processed image #" << x + 1 << " of " << NUM_IMAGES << "\n";
 	}
 
+	std::cout << "\nBeginning output file creation phase.\n";
 	for(size_t drs_index = 0; drs_index < drs.size(); ++drs_index){
 		for(size_t ranking_index = 0; ranking_index < drs[drs_index].rankings_to_save.size(); ++ranking_index){
 			int num_pixels_to_rank_this_round = drs[drs_index].rankings_to_save[ranking_index];
@@ -356,9 +369,9 @@ int main(int argc, char *argv[])
 				if(num_pixels_to_rank_this_round == 1){
 					current_power = 1.0;
 				}
-				Image result_img = createImage(height, width);
-				for(int i = 0; i < height; ++i){
-					for(int j = 0; j < width; ++j){
+				Image result_img = createImage(HEIGHT, WIDTH);
+				for(int i = 0; i < HEIGHT; ++i){
+					for(int j = 0; j < WIDTH; ++j){
 						double totalScore = 0.0;
 						for(int k = 0; k < num_pixels_to_rank_this_round; ++k){
 							totalScore += pow(drs[drs_index].biggestDifferences[i][j][k], current_power);
@@ -393,10 +406,14 @@ int main(int argc, char *argv[])
 				}
 				outputFilename += ".ppm";
 				writeImage(result_img, outputFilename.c_str());
+				std::cout << "Created file " << outputFilename << "\n";
 				deleteImage(result_img);
 			}
 		}
 	}
+
+	//Success
+	std::cout << "\n\n     ___    __  __  _    ___  _     \n    /  _]  /  ]|  |/ ]  /  _]| |    \n   /  [_  /  / |  ' /  /  [_ | |    \n  |    _]/  /  |    \\ |    _]| |___ \n  |   [_/   \\_ |     \\|   [_ |     |\n  |     \\     ||  .  ||     ||     |\n  |_____|\\____||__|\\_||_____||_____|\n\n";
 
 	return 0;
 }
