@@ -1,6 +1,7 @@
 // A hello world program in C++
 
 #include <iostream>
+#include <fstream>
 #include <string>
 #include <iomanip>
 #include <vector>
@@ -28,7 +29,7 @@ typedef struct
 
 int main(int argc, char *argv[])
 {
-	std::cout << "LeastAverageImage Version 0.14\n\n";
+	std::cout << "LeastAverageImage Version 1.0\n\n";
 
 	std::string settingsFilenameAndPath;
 	if(argc < 2){
@@ -70,6 +71,12 @@ int main(int argc, char *argv[])
 	                                                opts_ini.atat("pre_averaged_pre_averaged_filename");
 	}
 
+	//List mode settings
+	const bool LIST_MODE = Utility::stob(opts_ini.atat("list_mode_list_mode"));
+	const bool USE_ALBUM_INPUT_PATH_FOR_LIST_MODE = Utility::stob(opts_ini.atat("list_mode_use_input_path_from_album_mode"));
+	const bool USE_ALTERNATIVE_TAG_FOR_LIST_MODE = Utility::stob(opts_ini.atat("list_mode_use_alternative_tag"));
+	const std::string ALTERNATIVE_TAG_FOR_LIST_MODE = opts_ini.atat("list_mode_alternative_tag");
+
 	//Album mode settings
 	//(New mode coming soon...)
 	const std::string ALBUM_INPUT_PATH = Utility::endWithSlash(opts_ini.atat("album_mode_input_path"));
@@ -90,20 +97,62 @@ int main(int argc, char *argv[])
 	const int RED_INDEX = 0;
 	const int GREEN_INDEX = 1;
 	const int BLUE_INDEX = 2;
-
-	const int NUM_IMAGES = 1 + LAST_FRAME - FIRST_FRAME;
-	//Album mode output tag
-	const std::string OUTPUT_TAG = ALBUM_NAME + Utility::intToString(FIRST_FRAME, ALBUM_NUM_DIGITS) + "-" + Utility::intToString(LAST_FRAME, ALBUM_NUM_DIGITS);
-
+	
+	std::string output_tag;
 	std::vector<std::string> inputFilenames; //INCLUDES PATHS
-	//Album mode
-	for(int x = FIRST_FRAME; x <= LAST_FRAME; ++x){
-		inputFilenames.push_back(ALBUM_INPUT_PATH + ALBUM_NAME + Utility::intToString(x, ALBUM_NUM_DIGITS) + ".ppm");
+	if(LIST_MODE){
+		//LIST MODE
+		//Input tag
+		if(USE_ALTERNATIVE_TAG_FOR_LIST_MODE){
+			output_tag = ALTERNATIVE_TAG_FOR_LIST_MODE;
+		}
+		else{
+			//The tag will the the settings filename, without the path or extension (.ini).
+			//First, get everything after the last slash:
+			std::string slashes = "/\\";
+			std::vector<std::string> v1 = Utility::splitByChars(settingsFilenameAndPath, slashes);
+			std::string s1 = v1[v1.size() -1];
+			//Next, get everything before the last period:
+			std::string s2;
+			if(s1.find(".") == std::string::npos){
+				s2 = s1;
+			}
+			else{
+				std::vector<std::string> v2 = Utility::splitByChars(s1, ".");
+				s2 = "";
+				for(int x = 0; x < v2.size() - 1; ++x){
+					s2 += v2[x];
+				}
+				output_tag = s2;
+			}
+		}
+		//Input filenames: Every non-blank line after "[list]" in the settings file
+		std::ifstream listfile(settingsFilenameAndPath);
+		std::string line = "";
+		while(std::getline(listfile, line) && line != "[list]"){ }
+		while(std::getline(listfile, line)){
+			if(line.length() > 0){
+				if(USE_ALBUM_INPUT_PATH_FOR_LIST_MODE){
+					inputFilenames.push_back(ALBUM_INPUT_PATH + line);
+				}
+				else{
+					inputFilenames.push_back(line);
+				}
+			}
+		}
+		if(inputFilenames.size() == 0){
+			std::cerr << "ERROR: No list found for list mode in " << settingsFilenameAndPath << "\n";
+			exit(1);
+		}
 	}
-	if(inputFilenames.size() != NUM_IMAGES){
-		std::cerr << "Logic error: Counted " << inputFilenames.size() << " of expected " << NUM_IMAGES << " input images.\n";
-		exit(1);
+	else{
+		//ALBUM MODE
+		output_tag = ALBUM_NAME + Utility::intToString(FIRST_FRAME, ALBUM_NUM_DIGITS) + "-" + Utility::intToString(LAST_FRAME, ALBUM_NUM_DIGITS);
+		for(int x = FIRST_FRAME; x <= LAST_FRAME; ++x){
+			inputFilenames.push_back(ALBUM_INPUT_PATH + ALBUM_NAME + Utility::intToString(x, ALBUM_NUM_DIGITS) + ".ppm");
+		}
 	}
+	const int NUM_IMAGES = inputFilenames.size();
 
 	Image first_image = readImage(inputFilenames[0]);
 	const int HEIGHT = first_image.height;
@@ -164,7 +213,7 @@ int main(int argc, char *argv[])
 				meanAverageImage.map[i][j].b = (unsigned char) round(1.0 * totals[i][j][BLUE_INDEX] / NUM_IMAGES);
 			}
 		}
-		writeImage(meanAverageImage, (OUTPUT_PATH + OUTPUT_TAG + "avg.ppm"));
+		writeImage(meanAverageImage, (OUTPUT_PATH + output_tag + "avg.ppm"));
 	}
 
 	std::vector<DifferenceRecord> drs;
@@ -284,15 +333,15 @@ int main(int argc, char *argv[])
 						}
 					}
 				}
-				std::string numPixelsToRankAsString = Utility::intToString(num_pixels_to_rank_this_round);
-				std::string outputFilename = OUTPUT_PATH + OUTPUT_TAG + drs[drs_index].name + "_rank" + numPixelsToRankAsString;
-				std::string powerAsString = Utility::doubleToString(current_power, 1);
-				outputFilename += "_power" + powerAsString;
+				//outputFilename variable DOES NOT INCLUDE PATH
+				std::string outputFilename = output_tag + drs[drs_index].name
+											+ "_rank" + Utility::intToString(num_pixels_to_rank_this_round)
+											+ "_power" + Utility::doubleToString(current_power, 1);
 				if(drs[drs_index].invert_scores){
 					outputFilename += "_invertscore";
 				}
 				outputFilename += ".ppm";
-				writeImage(result_img, outputFilename.c_str());
+				writeImage(result_img, OUTPUT_PATH + outputFilename);
 				std::cout << "Created file " << outputFilename << "\n";
 				deleteImage(result_img);
 			}
