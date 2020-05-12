@@ -2,111 +2,16 @@
 
 #include <iostream>
 #include <string>
-#include <sstream>
 #include <iomanip>
 #include <vector>
-#include <math.h> //round
-#include <cmath> //abs
-#include <stdlib.h>  //for malloc
+#include <math.h>
+#include <stdlib.h>
 #include <algorithm>
 
 #include "netpbm.h"
+#include "differencefunctions.h"
 #include "utility.h"
 #include "iniparser.h"
-
-void copyPixel(Pixel* to, Pixel from){
-	to->r = from.r;
-	to->g = from.g;
-	to->b = from.b;
-}
-
-void copyPixel(Pixel* to, Pixel* from){
-	to->r = from->r;
-	to->g = from->g;
-	to->b = from->b;
-}
-
-double difference_Regular(Pixel p1, Pixel p2){
-	//Possible range: 0 to 512
-
-	//Green counts 2x as much.
-	//return std::abs(((int) p1.r) - p2.r) + 2 * std::abs(((int) p1.g) - p2.g) + std::abs(((int) p1.b) - p2.b);
-	//"harder math version": requires doubles instead of ints as outputs. I like this version SLIGHTLY better.
-	return sqrt(pow(p1.r - p2.r, 2.0) + 2 * pow(p1.g - p2.g, 2.0) + pow(p1.b - p2.b, 2.0));
-}
-
-double difference_ColorRatio(Pixel p1, Pixel p2){
-	//Possible range: 0 to 440
-
-	//The "max" thing is there to avoid a divide-by-zero.
-	double p1_RtoG = (1.0 * p1.r) / std::max((int) p1.g, 1);
-	double p1_RtoB = (1.0 * p1.r) / std::max((int) p1.b, 1);
-	double p1_GtoB = (1.0 * p1.g) / std::max((int) p1.b, 1);
-
-	double p2_RtoG = (1.0 * p2.r) / std::max((int) p2.g, 1);
-	double p2_RtoB = (1.0 * p2.r) / std::max((int) p2.b, 1);
-	double p2_GtoB = (1.0 * p2.g) / std::max((int) p2.b, 1);
-
-	//"Color difference difference version"!!!!!!
-	// double p1_RtoG = (1.0 * p1.r) - p1.g;
-	// double p1_RtoB = (1.0 * p1.r) - p1.b;
-	// double p1_GtoB = (1.0 * p1.g) - p1.b;
-
-	// double p2_RtoG = (1.0 * p2.r) - p2.g;
-	// double p2_RtoB = (1.0 * p2.r) - p2.b;
-	// double p2_GtoB = (1.0 * p2.g) - p2.b;
-
-
-	return sqrt(pow(p1_RtoG - p2_RtoG, 2.0) + 2 * pow(p1_RtoB - p2_RtoB, 2.0) + pow(p1_GtoB - p2_GtoB, 2.0)); //original
-	//return sqrt(pow(p1_RtoG - p2_RtoG, 2.0) + 2 * pow(p1_RtoB - p2_RtoB, 2.0) + pow(p1_GtoB - p2_GtoB, 2.0)); //green counts twice
-	//return sqrt(0.299*pow(p1_RtoG - p2_RtoG, 2.0) + 0.587*pow(p1_RtoB - p2_RtoB, 2.0) + 0.144*pow(p1_GtoB - p2_GtoB, 2.0));  //"brightness scores" version
-	//return std::abs(p1_RtoG - p2_RtoG) + abs(p1_RtoB - p2_RtoB) + abs(p1_GtoB - p2_GtoB);   //"easier math" version: runtime difference is miniscule, and results look NOTICEABLY worse!!
-}
-
-double perceived_Brightness(Pixel color){
-  //possible range: 0 to 255 (really!)
-  //given a Pixel, returns the perceived brightness of the color
-  //on a scale from 0 to 255.
-
-  //The single line of code here is by me (Andrew Eckel) but the formula used
-  //was created by Darel Rex Finley, based on his attempts to
-  //reverse-engineer Photoshop’s RGB-to-Greyscale mode conversion.
-  //http://alienryderflex.com/hsp.html
-
-  //The version in the ErrorSpreader returns an int, but this version returns a double.
-
-  int r = (int)(color.r);
-  int g = (int)(color.g);
-  int b = (int)(color.b);
-
-  //pow() cannot be used here, because pow on a non-tiny number just returns
-  //something stupid called HUGEVAL.   <---- wait what???
-  return sqrt(0.299*r*r + 0.587*g*g + 0.114*b*b);
-}
-
-double difference_PerceivedBrightness(Pixel p1, Pixel p2){
-	//Possible range: 0 to 255.
-	return std::abs(perceived_Brightness(p1) - perceived_Brightness(p2));
-}
-
-double difference_Combined(Pixel p1, Pixel p2){
-	//Easy Math
-	// return difference_Regular(p1, p2) / 512.0 +
-	// 	difference_ColorRatio(p1, p2) / 440.0 +
-	// 	difference_PerceivedBrightness(p1, p2) / 255.0;
-	//Hard Math
-	// return sqrt(pow(difference_Regular(p1, p2) / 512.0, 2.0) + pow(difference_ColorRatio(p1, p2) / 440.0, 2.0) + pow(difference_PerceivedBrightness(p1, p2) / 255.0, 2.0));
-	//Weighed 3 (first were weights on CR of 1.5 , 3.0)
-	// return difference_Regular(p1, p2) / 512.0 + 
-	// 	9.0 * difference_ColorRatio(p1, p2) / 440.0 +
-	// 	difference_PerceivedBrightness(p1, p2) / 255.0;
-	//weighted 4
-	return difference_Regular(p1, p2) / 512.0 + 
-		9.0 * sqrt(difference_ColorRatio(p1, p2)) / sqrt(440.0) +
-		difference_PerceivedBrightness(p1, p2) / 255.0;
-	//written in a stupid way:
-	//return (difference_Regular(p1, p2) / 512.0) + (9.0 * difference_ColorRatio(p1, p2) / 440.0) + (difference_PerceivedBrightness(p1, p2) / 255.0);
-}
 
 typedef struct
 {
@@ -120,27 +25,10 @@ typedef struct
 	std::vector<std::vector<std::vector<double > > > biggestDifferences;
 } DifferenceRecord;
 
-std::string intToString(int x, size_t numberOfDigits){
-	std::stringstream ss;
-	ss << std::setw(numberOfDigits) << std::setfill('0') << x;
-	return ss.str();
-}
-
-std::string intToString(int x){
-	std::stringstream ss;
-	ss << x;
-	return ss.str();
-}
-
-std::string doubleToString(double x, int fixed_precision){
-	std::stringstream ss;
-	ss << std::setprecision(1) << std::fixed << x;
-	return ss.str();
-}
 
 int main(int argc, char *argv[])
 {
-	std::cout << "LeastAverageImage Version 0.13\n\n";
+	std::cout << "LeastAverageImage Version 0.14\n\n";
 
 	std::string settingsFilenameAndPath;
 	if(argc < 2){
@@ -205,12 +93,12 @@ int main(int argc, char *argv[])
 
 	const int NUM_IMAGES = 1 + LAST_FRAME - FIRST_FRAME;
 	//Album mode output tag
-	const std::string OUTPUT_TAG = ALBUM_NAME + intToString(FIRST_FRAME, ALBUM_NUM_DIGITS) + "-" + intToString(LAST_FRAME, ALBUM_NUM_DIGITS);
+	const std::string OUTPUT_TAG = ALBUM_NAME + Utility::intToString(FIRST_FRAME, ALBUM_NUM_DIGITS) + "-" + Utility::intToString(LAST_FRAME, ALBUM_NUM_DIGITS);
 
 	std::vector<std::string> inputFilenames; //INCLUDES PATHS
 	//Album mode
 	for(int x = FIRST_FRAME; x <= LAST_FRAME; ++x){
-		inputFilenames.push_back(ALBUM_INPUT_PATH + ALBUM_NAME + intToString(x, ALBUM_NUM_DIGITS) + ".ppm");
+		inputFilenames.push_back(ALBUM_INPUT_PATH + ALBUM_NAME + Utility::intToString(x, ALBUM_NUM_DIGITS) + ".ppm");
 	}
 	if(inputFilenames.size() != NUM_IMAGES){
 		std::cerr << "Logic error: Counted " << inputFilenames.size() << " of expected " << NUM_IMAGES << " input images.\n";
@@ -280,29 +168,28 @@ int main(int argc, char *argv[])
 	}
 
 	std::vector<DifferenceRecord> drs;
-
 	if(DO_REGULAR){
 		DifferenceRecord dr;
 		dr.name = "Regular";
-		dr.difference_function = difference_Regular;
+		dr.difference_function = DifferenceFunctions::difference_Regular;
 		drs.push_back(dr);
 	}
 	if(DO_PERCEIVED_BRIGHTNESS){
 		DifferenceRecord dr;
 		dr.name = "PerceivedBrightness";
-		dr.difference_function = difference_PerceivedBrightness;
+		dr.difference_function = DifferenceFunctions::difference_PerceivedBrightness;
 		drs.push_back(dr);
 	}
 	if(DO_COLOR_RATIO){
 		DifferenceRecord dr;
 		dr.name = "ColorRatio";
-		dr.difference_function = difference_ColorRatio;
+		dr.difference_function = DifferenceFunctions::difference_ColorRatio;
 		drs.push_back(dr);
 	}
 	if(DO_COMBO){
 		DifferenceRecord dr;
 		dr.name = "Combo";
-		dr.difference_function = difference_Combined;
+		dr.difference_function = DifferenceFunctions::difference_Combined;
 		drs.push_back(dr);
 	}
 
@@ -397,9 +284,9 @@ int main(int argc, char *argv[])
 						}
 					}
 				}
-				std::string numPixelsToRankAsString = intToString(num_pixels_to_rank_this_round);
+				std::string numPixelsToRankAsString = Utility::intToString(num_pixels_to_rank_this_round);
 				std::string outputFilename = OUTPUT_PATH + OUTPUT_TAG + drs[drs_index].name + "_rank" + numPixelsToRankAsString;
-				std::string powerAsString = doubleToString(current_power, 1);
+				std::string powerAsString = Utility::doubleToString(current_power, 1);
 				outputFilename += "_power" + powerAsString;
 				if(drs[drs_index].invert_scores){
 					outputFilename += "_invertscore";

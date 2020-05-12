@@ -5,10 +5,14 @@
 
 // netpbm.h
 // Functions for reading and writing binary PBM, PGM, and PPM image files.
-// V2.2B by Andrew Eckel, based on...
-// V2.2 by Marc Pomplun on 10/19/2013
+// V2.2C
+// Based on V2.2, 2013-10-19 Marc Pomplun
+// Last updated 2020-05-12 by Andrew Eckel
+
+// Andrew's changes:
 // This version has the "i" channel removed. It is more efficient for PPM files but it no longer supports PBM, PGM.
 // It also has versions of functions that accept C++ std::strings instead of C-style string literals.
+// Added copyPixel functions
 
 #define SQR(x) ((x)*(x))
 #define PI 3.14159265358979323846
@@ -116,5 +120,8 @@ void rectangle(Image img, int v1, int h1, int v2, int h2, int width, int dash, i
 // and the gaps between them, resp. Use 0 for either input to draw a solid line.
 // For setting the r, g, b, and i color values, see setPixel function.
 void ellipse(Image img, int vCenter, int hCenter, int vRadius, int hRadius, int width, int dash, int gap, int r, int g, int b);
+
+void copyPixel(Pixel* to, Pixel from);
+void copyPixel(Pixel* to, Pixel* from);
 
 #endif // NETPBM

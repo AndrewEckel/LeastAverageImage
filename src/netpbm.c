@@ -10,8 +10,6 @@
 #include <string.h>
 #include <math.h>
 
-
-
 // Create a new image of the given size and fill it with white pixels.
 // When you don't need the image anymore, don't forget to free its memory using deleteImage.
 Image createImage(int height, int width)
@@ -446,4 +444,16 @@ void ellipse(Image img, int vCenter, int hCenter, int vRadius, int hRadius, int 
 			last_h = h;
 		}
 	}
+}
+
+void copyPixel(Pixel* to, Pixel from){
+	to->r = from.r;
+	to->g = from.g;
+	to->b = from.b;
+}
+
+void copyPixel(Pixel* to, Pixel* from){
+	to->r = from->r;
+	to->g = from->g;
+	to->b = from->b;
 }

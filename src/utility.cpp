@@ -105,3 +105,21 @@ std::vector<int> Utility::toInts(const std::vector<std::string> v, bool requireA
 	}
 	return values;
 }
+
+std::string Utility::intToString(int x, size_t numberOfDigits){
+	std::stringstream ss;
+	ss << std::setw(numberOfDigits) << std::setfill('0') << x;
+	return ss.str();
+}
+
+std::string Utility::intToString(int x){
+	std::stringstream ss;
+	ss << x;
+	return ss.str();
+}
+
+std::string Utility::doubleToString(double x, int fixed_precision){
+	std::stringstream ss;
+	ss << std::setprecision(1) << std::fixed << x;
+	return ss.str();
+}

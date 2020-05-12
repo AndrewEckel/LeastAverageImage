@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 #include <stdexcept>
+#include <iomanip>
+#include <sstream>
 
 class Utility
 {
@@ -14,6 +16,9 @@ public:
 	static std::vector<std::string> splitByChars(std::string s, std::string split_chars);
 	static std::vector<double> toDoubles(const std::vector<std::string> v, bool requireALLnumbers);
 	static std::vector<int> toInts(const std::vector<std::string> v, bool requireALLints);
+	static std::string intToString(int x, size_t numberOfDigits);
+	static std::string intToString(int x);
+	static std::string doubleToString(double x, int fixed_precision);
 };
 
 #endif //UTILITY_H
