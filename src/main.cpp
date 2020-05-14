@@ -29,7 +29,7 @@ typedef struct
 
 int main(int argc, char *argv[])
 {
-	std::cout << "LeastAverageImage Version 1.0\n\n";
+	std::cout << "LeastAverageImage Version 1.01" << std::endl << std::endl;
 
 	std::string settingsFilenameAndPath;
 	if(argc < 2){
@@ -39,12 +39,13 @@ int main(int argc, char *argv[])
 		settingsFilenameAndPath = argv[1];
 	}
 	ini opts_ini(settingsFilenameAndPath);
-	std::cout << "Parsing input file " << settingsFilenameAndPath << "\n";
+	std::cout << "Parsing input file " << settingsFilenameAndPath << std::endl;
 
 	//General settings
 	const std::string OUTPUT_PATH = Utility::endWithSlash(opts_ini.atat("general_output_path"));
 	const bool INVERT_SCORES = Utility::stob(opts_ini.atat("general_invert_scores"));
 	const bool HIDE_WARNINGS = Utility::stob(opts_ini.atat("general_hide_warnings"));
+	const bool SAVE_AVERAGE = Utility::stob(opts_ini.atat("general_save_average"));
 
 	const std::string split_chars = ",";
 	std::vector<double> powersOfScore = Utility::toDoubles(Utility::splitByChars(opts_ini.atat("general_powers_of_score"), split_chars), true);
@@ -90,7 +91,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	std::cout << "Finished parsing.\n";
+	std::cout << "Finished parsing." << std::endl;
 
 	//Constants
 	const int NUM_COLOR_CHANNELS = 3; //R,G,B.
@@ -162,12 +163,12 @@ int main(int argc, char *argv[])
 	Image meanAverageImage;
 	
 	if(SKIP_AVERAGING_PHASE){
-		std::cout << "\nSKIPPING AVERAGING PHASE. Reading in pre-averaged file.\n";
+		std::cout << "\nSKIPPING AVERAGING PHASE. Reading in pre-averaged file." << std::endl;
 		meanAverageImage = readImage(preAveragedFilenameWithPath);
 		deleteImage(first_image);
 	}
 	else{
-		std::cout << "\nBeginning averaging phase. First image should take the longest.\n";
+		std::cout << "\nBeginning averaging phase. First image should take the longest." << std::endl;
 		//For now, averaging means a mean average.
 		//I can't think of any efficient algorithm for median average with reasonable memory usage.
 		//Maybe such a thing is possible?  https://stackoverflow.com/questions/3372006/incremental-median-computation-with-max-memory-efficiency
@@ -185,7 +186,7 @@ int main(int argc, char *argv[])
 		}
 		deleteImage(first_image);
 		
-		std::cout << "Averaging: Processed 1st image ok\n";
+		std::cout << "Averaging: Processed 1st image ok" << std::endl;
 		for(int x = 1; x < NUM_IMAGES; ++x){  //starting loop with the second image because we already did the first as a special case
 			Image img = readImage(inputFilenames[x]);
 			
@@ -203,7 +204,7 @@ int main(int argc, char *argv[])
 				}
 			}
 			deleteImage(img);
-			std::cout << "Averaging: Processed image #" << x + 1 << " of " << NUM_IMAGES << "\n";
+			std::cout << "Averaging: Processed image #" << x + 1 << " of " << NUM_IMAGES << std::endl;
 		}
 		meanAverageImage = createImage(HEIGHT, WIDTH);
 		for(int i = 0; i < HEIGHT; ++i){
@@ -213,7 +214,9 @@ int main(int argc, char *argv[])
 				meanAverageImage.map[i][j].b = (unsigned char) round(1.0 * totals[i][j][BLUE_INDEX] / NUM_IMAGES);
 			}
 		}
-		writeImage(meanAverageImage, (OUTPUT_PATH + output_tag + "avg.ppm"));
+		if(SAVE_AVERAGE){
+			writeImage(meanAverageImage, (OUTPUT_PATH + output_tag + "avg.ppm"));
+		}
 	}
 
 	std::vector<DifferenceRecord> drs;
@@ -261,7 +264,7 @@ int main(int argc, char *argv[])
 	}
 
 	//Second pass: Find the most different.
-	std::cout << "\nBeginning differentiating phase. First image should take the longest.\n";
+	std::cout << "\nBeginning differentiating phase. First image should take the longest." << std::endl;
 	for(int x = 0; x < NUM_IMAGES; ++x){
 		Image img = readImage(inputFilenames[x]);
 		for(int i = 0; i < HEIGHT; ++i){
@@ -276,7 +279,7 @@ int main(int argc, char *argv[])
 						}
 						++rank;
 						if(rank < 0 || rank >= drs[drs_index].num_pixels_to_rank){
-							std::cerr << "ERROR: RANK " << rank << " for " << drs[drs_index].name << "(" << i << ", " << j << ")\n";
+							std::cerr << "ERROR: RANK " << rank << " for " << drs[drs_index].name << "(" << i << ", " << j << ")" << std::endl;
 						}
 						for(size_t backwards_iterator = drs[drs_index].num_pixels_to_rank - 1; backwards_iterator > rank; --backwards_iterator){
 							drs[drs_index].biggestDifferences[i][j][backwards_iterator] = drs[drs_index].biggestDifferences[i][j][backwards_iterator - 1];
@@ -289,10 +292,15 @@ int main(int argc, char *argv[])
 			}
 		}
 		deleteImage(img);
-		std::cout << "Differentiating: Processed image #" << x + 1 << " of " << NUM_IMAGES << "\n";
+		std::cout << "Differentiating: Processed image #" << x + 1 << " of " << NUM_IMAGES << std::endl;
 	}
 
-	std::cout << "\nBeginning output file creation phase.\n";
+	std::cout << "\nBeginning output file creation phase." << std::endl;
+
+	bool use_tag_as_entire_filename = false;
+	if(LIST_MODE && drs.size() == 1 && rankingsToSave.size() == 1 && powersOfScore.size() == 1){
+		use_tag_as_entire_filename = true;
+	}
 	for(size_t drs_index = 0; drs_index < drs.size(); ++drs_index){
 		for(size_t ranking_index = 0; ranking_index < drs[drs_index].rankings_to_save.size(); ++ranking_index){
 			int num_pixels_to_rank_this_round = drs[drs_index].rankings_to_save[ranking_index];
@@ -313,7 +321,7 @@ int main(int argc, char *argv[])
 							totalScore += pow(drs[drs_index].biggestDifferences[i][j][k], current_power);
 						}
 						if(totalScore <= 0.0 && !HIDE_WARNINGS){
-							std::cout << "WARNING: All pixels at position " << i << ", " << j << " are equal to the average, for " << drs[drs_index].name << ".\n";
+							std::cout << "WARNING: All pixels at position " << i << ", " << j << " are equal to the average, for " << drs[drs_index].name << "." << std::endl;
 							copyPixel(&result_img.map[i][j], &meanAverageImage.map[i][j]);
 						}
 						else{
@@ -334,22 +342,28 @@ int main(int argc, char *argv[])
 					}
 				}
 				//outputFilename variable DOES NOT INCLUDE PATH
-				std::string outputFilename = output_tag + drs[drs_index].name
-											+ "_rank" + Utility::intToString(num_pixels_to_rank_this_round)
-											+ "_power" + Utility::doubleToString(current_power, 1);
-				if(drs[drs_index].invert_scores){
-					outputFilename += "_invertscore";
+				std::string outputFilename;
+				if(use_tag_as_entire_filename){
+					outputFilename = output_tag + ".ppm";
 				}
-				outputFilename += ".ppm";
+				else{
+					outputFilename = output_tag + drs[drs_index].name
+												+ "_rank" + Utility::intToString(num_pixels_to_rank_this_round)
+												+ "_power" + Utility::doubleToString(current_power, 1);
+					if(drs[drs_index].invert_scores){
+						outputFilename += "_invertscore";
+					}
+					outputFilename += ".ppm";
+				}
 				writeImage(result_img, OUTPUT_PATH + outputFilename);
-				std::cout << "Created file " << outputFilename << "\n";
+				std::cout << "Created file " << outputFilename << std::endl;
 				deleteImage(result_img);
 			}
 		}
 	}
 
 	//Success
-	std::cout << "\n\n     ___    __  __  _    ___  _     \n    /  _]  /  ]|  |/ ]  /  _]| |    \n   /  [_  /  / |  ' /  /  [_ | |    \n  |    _]/  /  |    \\ |    _]| |___ \n  |   [_/   \\_ |     \\|   [_ |     |\n  |     \\     ||  .  ||     ||     |\n  |_____|\\____||__|\\_||_____||_____|\n\n";
+	std::cout << "\n\n     ___    __  __  _    ___  _     \n    /  _]  /  ]|  |/ ]  /  _]| |    \n   /  [_  /  / |  ' /  /  [_ | |    \n  |    _]/  /  |    \\ |    _]| |___ \n  |   [_/   \\_ |     \\|   [_ |     |\n  |     \\     ||  .  ||     ||     |\n  |_____|\\____||__|\\_||_____||_____|\n" << std::endl;
 
 	return 0;
 }

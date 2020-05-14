@@ -6,3 +6,4 @@ output/**/*.jpg
 output/**/*.png
 output/**/*.gif
 output/**/*.psd
+output/**/*.txt
