@@ -29,7 +29,8 @@ typedef struct
 
 int main(int argc, char *argv[])
 {
-	std::cout << "LeastAverageImage Version 1.01" << std::endl << std::endl;
+	std::cout << "LeastAverageImage Version 1.03" << std::endl << std::endl;
+	//std::cout << "32 bit version\n";
 
 	std::string settingsFilenameAndPath;
 	if(argc < 2){
@@ -57,11 +58,43 @@ int main(int argc, char *argv[])
 	const bool DO_REGULAR = Utility::stob(opts_ini.atat("difference_functions_do_regular"));
 	const bool DO_PERCEIVED_BRIGHTNESS = Utility::stob(opts_ini.atat("difference_functions_do_perceived_brightness"));
 	const bool DO_COLOR_RATIO = Utility::stob(opts_ini.atat("difference_functions_do_color_ratio"));
+	bool DO_INVERTED_COLOR_RATIO, DO_HALF_INVERTED_COLOR_RATIO, DO_INVERTED_ENUMERATOR_COLOR_RATIO, DO_EXPERIMENT;
+	try{
+		DO_INVERTED_COLOR_RATIO = Utility::stob(opts_ini.atat("difference_functions_do_inverted_color_ratio"));
+	} catch(std::exception e){
+		std::cout << "WARNING: No value found for do_inverted_color_ratio. Assuming false.\n";
+		DO_INVERTED_COLOR_RATIO = false;
+	}
+	try{
+		DO_HALF_INVERTED_COLOR_RATIO = Utility::stob(opts_ini.atat("difference_functions_do_half_inverted_color_ratio"));
+	} catch(std::exception e){
+		std::cout << "WARNING: No value found for do_half_inverted_color_ratio. Assuming false.\n";
+		DO_HALF_INVERTED_COLOR_RATIO = false;
+	}
+	try{
+		DO_INVERTED_ENUMERATOR_COLOR_RATIO = Utility::stob(opts_ini.atat("difference_functions_do_inverted_enumerator_color_ratio"));
+	} catch(std::exception e){
+		std::cout << "WARNING: No value found for do_inverted_enumerator_color_ratio. Assuming false.\n";
+		DO_INVERTED_ENUMERATOR_COLOR_RATIO = false;
+	}
+	try{
+		DO_EXPERIMENT = Utility::stob(opts_ini.atat("difference_functions_do_experiment"));
+	} catch(std::exception e){
+		std::cout << "WARNING: No value found for do_experiment. Assuming false.\n";
+		DO_EXPERIMENT = false;
+	}
 	const bool DO_COMBO = Utility::stob(opts_ini.atat("difference_functions_do_combo"));
 
-	if(DO_REGULAR + DO_PERCEIVED_BRIGHTNESS + DO_COLOR_RATIO + DO_COMBO == 0){
-		std::cerr << "ERROR: No difference functions selected.\n";
-		exit(1);
+	if(DO_REGULAR +
+		DO_PERCEIVED_BRIGHTNESS +
+		DO_COLOR_RATIO +
+		DO_INVERTED_COLOR_RATIO +
+		DO_HALF_INVERTED_COLOR_RATIO +
+		DO_INVERTED_ENUMERATOR_COLOR_RATIO +
+		DO_COMBO +
+		DO_EXPERIMENT == 0){
+			std::cerr << "ERROR: No difference functions selected.\n";
+			exit(1);
 	}
 
 	//Pre-Averaged
@@ -238,11 +271,36 @@ int main(int argc, char *argv[])
 		dr.difference_function = DifferenceFunctions::difference_ColorRatio;
 		drs.push_back(dr);
 	}
+	if(DO_INVERTED_COLOR_RATIO){
+		DifferenceRecord dr;
+		dr.name = "InvertedColorRatio";
+		dr.difference_function = DifferenceFunctions::difference_InvertedColorRatio;
+		drs.push_back(dr);
+	}
+	if(DO_HALF_INVERTED_COLOR_RATIO){
+		DifferenceRecord dr;
+		dr.name = "HalfInvertedColorRatio";
+		dr.difference_function = DifferenceFunctions::difference_HalfInvertedColorRatio;
+		drs.push_back(dr);
+	}
+	if(DO_INVERTED_ENUMERATOR_COLOR_RATIO){
+		DifferenceRecord dr;
+		dr.name = "InvertedEnumeratorColorRatio";
+		dr.difference_function = DifferenceFunctions::difference_InvertedEnumeratorColorRatio;
+		drs.push_back(dr);
+	}
 	if(DO_COMBO){
 		DifferenceRecord dr;
 		dr.name = "Combo";
 		dr.difference_function = DifferenceFunctions::difference_Combined;
 		drs.push_back(dr);
+	}
+	if(DO_EXPERIMENT){
+		std::cout << "Experiment //008 inverted w 128 instead of 255\n";
+		DifferenceRecord dr;
+		dr.name = "Experiment001";
+		dr.difference_function = DifferenceFunctions::difference_Experiment;
+		drs.push_back(dr);		
 	}
 
 	Pixel white;

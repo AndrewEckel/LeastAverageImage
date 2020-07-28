@@ -13,8 +13,12 @@ public:
 	//All functions are static.
 	static double difference_Regular(Pixel p1, Pixel p2);
 	static double difference_ColorRatio(Pixel p1, Pixel p2);
+	static double difference_InvertedColorRatio(Pixel p1, Pixel p2);
 	static double difference_PerceivedBrightness(Pixel p1, Pixel p2);
 	static double difference_Combined(Pixel p1, Pixel p2);
+	static double difference_InvertedEnumeratorColorRatio(Pixel p1, Pixel p2);
+	static double difference_HalfInvertedColorRatio(Pixel p1, Pixel p2);
+	static double difference_Experiment(Pixel p1, Pixel p2);
 };
 
 #endif //DIFFERENCEFUNCTIONS_H
