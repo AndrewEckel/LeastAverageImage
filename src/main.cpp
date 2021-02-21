@@ -26,10 +26,67 @@ typedef struct
 	std::vector<std::vector<std::vector<double > > > biggestDifferences;
 } DifferenceRecord;
 
+Image resize_and_crop(Image img, const int OUTPUT_HEIGHT, const int OUTPUT_WIDTH, bool delete_original){
+	if(img.height == OUTPUT_HEIGHT && img.width == OUTPUT_WIDTH){
+		return img;
+	}
+
+	//1. Resizing
+	double size_multiplier_min_height = 1.0 * OUTPUT_HEIGHT / img.height;
+	double size_multiplier_min_width = 1.0 * OUTPUT_WIDTH / img.width;
+	double size_multiplier = std::max(size_multiplier_min_height, size_multiplier_min_width);
+	int resize_height = round(size_multiplier * img.height);
+	int resize_width = round(size_multiplier * img.width);
+	if(resize_height < OUTPUT_HEIGHT){
+		while(resize_height < OUTPUT_HEIGHT){
+			++resize_height; //this seems to never happen
+		}
+	}
+	if(resize_width < OUTPUT_WIDTH){
+		while(resize_width < OUTPUT_WIDTH){
+			++resize_width; //this seems to never happen
+		}
+	}
+	Image resized_image = resampleBicubic(img, resize_height, resize_width);
+
+	//2. Cropping.
+	Image cropped_image = createImage(OUTPUT_HEIGHT, OUTPUT_WIDTH);
+	int i_first, i_last, j_first, j_last;
+	if(resized_image.height == OUTPUT_HEIGHT){
+		i_first = 0;
+		i_last = OUTPUT_HEIGHT - 1;
+		j_first = floor((resized_image.width / 2.0) - (OUTPUT_WIDTH / 2.0));
+		j_last = j_first + OUTPUT_WIDTH - 1;
+	}
+	else if (resized_image.width == OUTPUT_WIDTH){
+		i_first = floor((resized_image.height / 2.0) - (OUTPUT_HEIGHT / 2.0));
+		i_last = i_first + OUTPUT_HEIGHT - 1;
+		j_first = 0;
+		j_last = OUTPUT_WIDTH - 1;
+	}
+	else{
+		std::cerr << "ERROR: Neither height nor width is a match after resizing in resize_and_crop()\n";
+		deleteImage(resized_image);
+		deleteImage(img);
+		exit(1);
+	}
+	for(int i = i_first; i <= i_last; ++i){
+		for(int j = j_first; j <= j_last; ++j){
+			copyPixel(&cropped_image.map[i - i_first][j - j_first], &resized_image.map[i][j]);
+		}
+	}
+
+	deleteImage(resized_image);
+	if(delete_original){
+		deleteImage(img);
+	}
+	return cropped_image;
+}
+
 
 int main(int argc, char *argv[])
 {
-	std::cout << "LeastAverageImage Version 1.03" << std::endl << std::endl;
+	std::cout << "LeastAverageImage Version 1.04" << std::endl << std::endl;
 	//std::cout << "32 bit version\n";
 
 	std::string settingsFilenameAndPath;
@@ -53,6 +110,13 @@ int main(int argc, char *argv[])
 	std::vector<int> rankingsToSave = Utility::toInts(Utility::splitByChars(opts_ini.atat("general_rankings_to_save"), split_chars), true);
 	std::sort(rankingsToSave.begin(), rankingsToSave.end(), std::greater<int>());  //Reverse-sort numbers of rankings.
 	const int NUM_PIXELS_TO_RANK = rankingsToSave[0];  //Whater is the greatest number of rankings desired, that's how many we'll need to do.
+	bool resize_and_crop_to_average_shape = false;
+	try{
+		resize_and_crop_to_average_shape = Utility::stob(opts_ini.atat("general_resize_and_crop_to_average_shape"));
+	} catch(std::exception){
+		std::cout << "WARNING: No setting found for resize_and_crop_to_average_shape. Assuming false.\n";
+	}
+	double AVERAGE_DIMENSIONS_MULTIPLIER = 1.4; //If resizing/cropping, the output files dimensions will be 1.4 * the average input dimensions.
 
 	//Which difference functions should we use?
 	const bool DO_REGULAR = Utility::stob(opts_ini.atat("difference_functions_do_regular"));
@@ -187,10 +251,29 @@ int main(int argc, char *argv[])
 		}
 	}
 	const int NUM_IMAGES = inputFilenames.size();
-
 	Image first_image = readImage(inputFilenames[0]);
-	const int HEIGHT = first_image.height;
-	const int WIDTH = first_image.width;
+
+	int OUTPUT_HEIGHT, OUTPUT_WIDTH;
+
+	if(resize_and_crop_to_average_shape){
+		//0th pass: Determine the desired output size.
+		std::cout << "\nDETERMINING IDEAL OUTPUT SIZE." << std::endl;
+		long long total_height = 0;
+		long long total_width = 0;
+		for(int x = 0; x < NUM_IMAGES; ++x){
+			std::pair<int, int> dimensions = readHeightAndWidth(inputFilenames[x]);
+			total_height += dimensions.first;
+			total_width += dimensions.second;
+		}
+		OUTPUT_HEIGHT = round(AVERAGE_DIMENSIONS_MULTIPLIER * total_height / NUM_IMAGES);
+		OUTPUT_WIDTH = round(AVERAGE_DIMENSIONS_MULTIPLIER * total_width / NUM_IMAGES);
+		std::cout << "The output dimensions will be " << OUTPUT_HEIGHT << "x" << OUTPUT_WIDTH << "px" << std::endl;
+		first_image = resize_and_crop(first_image, OUTPUT_HEIGHT, OUTPUT_WIDTH, true);
+	}
+	else{
+		OUTPUT_HEIGHT = first_image.height;
+		OUTPUT_WIDTH = first_image.width;
+	}
 
 	//First pass: Sum all the values in the input files.
 	Image meanAverageImage;
@@ -199,18 +282,25 @@ int main(int argc, char *argv[])
 		std::cout << "\nSKIPPING AVERAGING PHASE. Reading in pre-averaged file." << std::endl;
 		meanAverageImage = readImage(preAveragedFilenameWithPath);
 		deleteImage(first_image);
+
+		if(meanAverageImage.height != OUTPUT_HEIGHT || meanAverageImage.width != OUTPUT_WIDTH){
+			std::cerr << "ERROR: Pre-averaged image dimensions do not match expected output dimensions.\n";
+			deleteImage(meanAverageImage);
+			exit(1);
+		}
 	}
 	else{
 		std::cout << "\nBeginning averaging phase. First image should take the longest." << std::endl;
-		//For now, averaging means a mean average.
-		//I can't think of any efficient algorithm for median average with reasonable memory usage.
-		//Maybe such a thing is possible?  https://stackoverflow.com/questions/3372006/incremental-median-computation-with-max-memory-efficiency
+		//Only one option for averaging: mean average
+		//Room for improvement: Is there any efficient algorithm for median average with reasonable memory usage? It could be a fun second option.
+		//Look into the question here: https://stackoverflow.com/questions/3372006/incremental-median-computation-with-max-memory-efficiency
+		//This would require a variation of readImage() that can retrieve a particular pixel without reading in the entire image.
 		std::vector<std::vector<std::vector< unsigned long long > > > totals;
 		
 		//First image
-		for(int i = 0; i < HEIGHT; ++i){
+		for(int i = 0; i < OUTPUT_HEIGHT; ++i){
 			totals.push_back(std::vector<std::vector<unsigned long long > >());
-			for(int j = 0; j < WIDTH; ++j){
+			for(int j = 0; j < OUTPUT_WIDTH; ++j){
 				totals[i].push_back(std::vector<unsigned long long >());
 				totals[i][j].push_back(first_image.map[i][j].r); //0
 				totals[i][j].push_back(first_image.map[i][j].g); //1
@@ -223,14 +313,17 @@ int main(int argc, char *argv[])
 		for(int x = 1; x < NUM_IMAGES; ++x){  //starting loop with the second image because we already did the first as a special case
 			Image img = readImage(inputFilenames[x]);
 			
-			if(img.height != HEIGHT || img.width != WIDTH){
+			if(resize_and_crop_to_average_shape){
+				img = resize_and_crop(img, OUTPUT_HEIGHT, OUTPUT_WIDTH, true);
+			}
+			else if(img.height != OUTPUT_HEIGHT || img.width != OUTPUT_WIDTH){
 				std::cerr << "ERROR: Image  \"" << inputFilenames[x] << "\" dimensions do not match those of image \"" << inputFilenames[0] << "\".\n";
 				deleteImage(img);
 				exit(1);
 			}
 
-			for(int i = 0; i < HEIGHT; ++i){
-				for(int j = 0; j < WIDTH; ++j){
+			for(int i = 0; i < OUTPUT_HEIGHT; ++i){
+				for(int j = 0; j < OUTPUT_WIDTH; ++j){
 					totals[i][j][RED_INDEX] += img.map[i][j].r;
 					totals[i][j][GREEN_INDEX] += img.map[i][j].g;
 					totals[i][j][BLUE_INDEX] += img.map[i][j].b;
@@ -239,9 +332,9 @@ int main(int argc, char *argv[])
 			deleteImage(img);
 			std::cout << "Averaging: Processed image #" << x + 1 << " of " << NUM_IMAGES << std::endl;
 		}
-		meanAverageImage = createImage(HEIGHT, WIDTH);
-		for(int i = 0; i < HEIGHT; ++i){
-			for(int j = 0; j < WIDTH; ++j){
+		meanAverageImage = createImage(OUTPUT_HEIGHT, OUTPUT_WIDTH);
+		for(int i = 0; i < OUTPUT_HEIGHT; ++i){
+			for(int j = 0; j < OUTPUT_WIDTH; ++j){
 				meanAverageImage.map[i][j].r = (unsigned char) round(1.0 * totals[i][j][RED_INDEX] / NUM_IMAGES);
 				meanAverageImage.map[i][j].g = (unsigned char) round(1.0 * totals[i][j][GREEN_INDEX] / NUM_IMAGES);
 				meanAverageImage.map[i][j].b = (unsigned char) round(1.0 * totals[i][j][BLUE_INDEX] / NUM_IMAGES);
@@ -317,16 +410,19 @@ int main(int argc, char *argv[])
 		drs[drs_index].rankings_to_save = rankingsToSave;
 
 		//Initialize mostDifferentPixels (all white) and biggestDifferences (all zeroes).
-		drs[drs_index].mostDifferentPixels = std::vector<std::vector<std::vector<Pixel > > >(HEIGHT, std::vector<std::vector<Pixel > >(WIDTH, std::vector<Pixel>(NUM_PIXELS_TO_RANK, white)));
-		drs[drs_index].biggestDifferences = std::vector<std::vector<std::vector<double > > >(HEIGHT, std::vector<std::vector<double > >(WIDTH, std::vector<double>(NUM_PIXELS_TO_RANK, 0)));
+		drs[drs_index].mostDifferentPixels = std::vector<std::vector<std::vector<Pixel > > >(OUTPUT_HEIGHT, std::vector<std::vector<Pixel > >(OUTPUT_WIDTH, std::vector<Pixel>(NUM_PIXELS_TO_RANK, white)));
+		drs[drs_index].biggestDifferences = std::vector<std::vector<std::vector<double > > >(OUTPUT_HEIGHT, std::vector<std::vector<double > >(OUTPUT_WIDTH, std::vector<double>(NUM_PIXELS_TO_RANK, 0)));
 	}
 
 	//Second pass: Find the most different.
 	std::cout << "\nBeginning differentiating phase. First image should take the longest." << std::endl;
 	for(int x = 0; x < NUM_IMAGES; ++x){
 		Image img = readImage(inputFilenames[x]);
-		for(int i = 0; i < HEIGHT; ++i){
-			for(int j = 0; j < WIDTH; ++j){
+		if(resize_and_crop_to_average_shape){
+			img = resize_and_crop(img, OUTPUT_HEIGHT, OUTPUT_WIDTH, true);
+		}
+		for(int i = 0; i < OUTPUT_HEIGHT; ++i){
+			for(int j = 0; j < OUTPUT_WIDTH; ++j){
 				for(size_t drs_index = 0; drs_index < drs.size(); ++drs_index){
 					double diff = drs[drs_index].difference_function(meanAverageImage.map[i][j], img.map[i][j]);
 
@@ -371,9 +467,9 @@ int main(int argc, char *argv[])
 				if(num_pixels_to_rank_this_round == 1){
 					current_power = 1.0;
 				}
-				Image result_img = createImage(HEIGHT, WIDTH);
-				for(int i = 0; i < HEIGHT; ++i){
-					for(int j = 0; j < WIDTH; ++j){
+				Image result_img = createImage(OUTPUT_HEIGHT, OUTPUT_WIDTH);
+				for(int i = 0; i < OUTPUT_HEIGHT; ++i){
+					for(int j = 0; j < OUTPUT_WIDTH; ++j){
 						double totalScore = 0.0;
 						for(int k = 0; k < num_pixels_to_rank_this_round; ++k){
 							totalScore += pow(drs[drs_index].biggestDifferences[i][j][k], current_power);

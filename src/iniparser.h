@@ -21,7 +21,7 @@ public:
 	ini(const std::string &iniFile);
 	// Member functions
 	void parse(const std::string &iniFile);
-	std::string atat(const std::string s);
+	std::string atat(const std::string s) const;
 };
 
 #endif /* INIPARSER_H */

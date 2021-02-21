@@ -2,22 +2,26 @@
 #define NETPBM
 
 #include <string>
+#include <utility>
 
 // netpbm.h
 // Functions for reading and writing binary PBM, PGM, and PPM image files.
 // V2.2C
-// Based on V2.2, 2013-10-19 Marc Pomplun
-// Last updated 2020-05-12 by Andrew Eckel
+// Based on V2.2, 2013-10-19 Marc Pomplun + Marc's bicubic resampling functions sent by e-mail
+// Last updated 2021-02-21
 
 // Andrew's changes:
 // This version has the "i" channel removed. It is more efficient for PPM files but it no longer supports PBM, PGM.
 // It also has versions of functions that accept C++ std::strings instead of C-style string literals.
 // Added copyPixel functions
+// Added readHeightAndWidth function -- pretty much just readImage without the actual image reading.
+// Added Marc's bicubic resampling function (with my CLAMP() definition)
 
 #define SQR(x) ((x)*(x))
 #define PI 3.14159265358979323846
 #define MIN(X,Y) ((X)<(Y)?(X):(Y))
 #define MAX(X,Y) ((X)>(Y)?(X):(Y))
+#define CLAMP(X) MIN(MAX(X,0),255)
 
 // Additional color options for drawing lines and shapes.
 #define NO_CHANGE -1
@@ -123,5 +127,13 @@ void ellipse(Image img, int vCenter, int hCenter, int vRadius, int hRadius, int 
 
 void copyPixel(Pixel* to, Pixel from);
 void copyPixel(Pixel* to, Pixel* from);
+
+// Helper function for resampleBicubic
+double c(double s, int n);
+// Rescale a color image using bicubic interpolation so that the new image size is vTarget by hTarget pixels.
+Image resampleBicubic(Image inImage, int vTarget, int hTarget);
+
+//Read in the height and width information only and return it in a pair, with height first, width second.
+std::pair<int, int> readHeightAndWidth(const std::string filename);
 
 #endif // NETPBM

@@ -457,3 +457,95 @@ void copyPixel(Pixel* to, Pixel* from){
 	to->g = from->g;
 	to->b = from->b;
 }
+
+// Helper function for resampleBicubic
+double c(double s, int n)
+{
+  switch (n) {
+    case 0: return - 1.0/6.0 * s * s * s + s * s - 11.0/6.0 * s + 1.0;
+    case 1: return   1.0/2.0 * s * s * s - 5.0/2.0 * s * s + 3.0 * s;
+    case 2: return - 1.0/2.0 * s * s * s + 2.0 * s * s - 3.0/2.0 * s;
+    case 3: return   1.0/6.0 * s * s * s -1.0/2.0 * s * s + 1.0/3.0 * s;
+  }
+}
+
+
+// Rescale a color image using bicubic interpolation so that the new image size is vTarget by hTarget pixels.
+Image resampleBicubic(Image inImage, int vTarget, int hTarget)
+{
+    int i, j, k, l, i_offset, j_offset, k_pixel, l_pixel;
+    double rValue, gValue, bValue, i_orig, j_orig, i_relpos, j_relpos;
+    double intensity;
+    double i_factor = (double) inImage.height/(double) vTarget;
+    double j_factor = (double) inImage.width/(double) hTarget;
+    Image outImage = createImage(vTarget, hTarget);
+
+    for (i = 0; i < vTarget; i++){
+        for (j = 0; j < hTarget; j++){
+            i_orig = (double) i*i_factor;
+            j_orig = (double) j*j_factor;
+            i_offset = (int) i_orig - 1;
+            j_offset = (int) j_orig - 1;
+            i_relpos = i_orig - (double) i_offset;
+            j_relpos = j_orig - (double) j_offset;
+
+            rValue = 0.0;
+            gValue = 0.0;
+            bValue = 0.0;
+            for (k = 0; k < 4; k++)
+                for (l = 0; l < 4; l++)
+                {
+                    k_pixel = MIN(inImage.height - 1, MAX(0, i_offset + k));
+                    l_pixel = MIN(inImage.width - 1, MAX(0, j_offset + l));
+                    rValue += (double) inImage.map[k_pixel][l_pixel].r*c(i_relpos, k)*c(j_relpos, l);
+                    gValue += (double) inImage.map[k_pixel][l_pixel].g*c(i_relpos, k)*c(j_relpos, l);
+                    bValue += (double) inImage.map[k_pixel][l_pixel].b*c(i_relpos, k)*c(j_relpos, l);
+                    outImage.map[i][j].r = CLAMP((int) (rValue + 0.5));
+                    outImage.map[i][j].g = CLAMP((int) (gValue + 0.5));
+                    outImage.map[i][j].b = CLAMP((int) (bValue + 0.5));
+                }
+        }
+    }
+    return outImage;
+}
+
+//Read in the height and width information only and return it in a pair, with height first, width second.
+std::pair<int, int> readHeightAndWidth(const std::string filename){
+	FILE *f;
+	int width, height, imax;
+	char type[200], line[200];
+
+	Format filetype;
+
+	f = fopen(filename.c_str(), "rb");
+	if (!f)
+	{
+		fprintf(stderr, "Can't open input file %s.\n", filename.c_str());
+		exit(1);
+	}
+
+	fscanf(f, "%s", type);
+	if (type[0] != 'P')
+	{
+		fprintf(stderr, "Error in %s: Only binary PPM files are supported.\n", filename.c_str());
+		exit(1);
+	}
+ 
+	line[0] = '#';
+	while (line[0] == '#' || line[0] == 10 || line[0] == 13){
+		fgets(line, 200, f); 
+	}
+	sscanf(line, "%d %d", &width, &height);
+
+	fgets(line, 200, f); 
+	sscanf(line, "%d", &imax);
+
+	if (width <= 0 || height <= 0)
+	{
+		fprintf(stderr, "Invalid image size in input file %s.\n", filename.c_str());
+		exit(1);
+	}
+	fclose(f);
+	
+	return std::make_pair(height, width);
+}
