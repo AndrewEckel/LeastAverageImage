@@ -1,4 +1,5 @@
 /* Part of Ben Hoyt's INIH project https://github.com/benhoyt/inih */
+/* Function "atat" added by Andrew Eckel 2020-05-11 */
 
 #include "iniparser.h"
 

@@ -3,6 +3,7 @@
 
 #include <math.h>
 #include <cmath>
+#include <string>
 
 #include "netpbm.h"
 
@@ -19,6 +20,7 @@ public:
 	static double difference_InvertedEnumeratorColorRatio(Pixel p1, Pixel p2);
 	static double difference_HalfInvertedColorRatio(Pixel p1, Pixel p2);
 	static double difference_Experiment(Pixel p1, Pixel p2);
+	static std::string NAME_OF_CURRENT_EXPERIMENT_DIFFERENCE_FUNCTION;
 };
 
 #endif //DIFFERENCEFUNCTIONS_H

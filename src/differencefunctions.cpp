@@ -127,18 +127,20 @@ double DifferenceFunctions::difference_HalfInvertedColorRatio(Pixel p1, Pixel p2
 	return sqrt(pow(p1_RtoG - p2_RtoG, 2.0) + 2 * pow(p1_RtoB - p2_RtoB, 2.0) + pow(p1_GtoB - p2_GtoB, 2.0));
 }
 
+std::string DifferenceFunctions::NAME_OF_CURRENT_EXPERIMENT_DIFFERENCE_FUNCTION = "Color Ratio Flipped";
+
 double DifferenceFunctions::difference_Experiment(Pixel p1, Pixel p2){
 	//This function is for whatever new idea is being tested.
 	//Any idea that produces interesting results should be made into its own function.
 	
-	//010 inverted enumerator with 128 (half inverted enumerator)
-	double p1_RtoG = (128.0 - p1.r) / std::max((int) p1.g, 1);
-	double p1_RtoB = (128.0 - p1.r) / std::max((int) p1.b, 1);
-	double p1_GtoB = (128.0 - p1.g) / std::max((int) p1.b, 1);
+	//ColorRatio Flipped
+	double p1_GtoR = (1.0 * p1.g) / std::max((int) p1.r, 1);
+	double p1_BtoR = (1.0 * p1.b) / std::max((int) p1.r, 1);
+	double p1_BtoG = (1.0 * p1.b) / std::max((int) p1.g, 1);
 
-	double p2_RtoG = (128.0 - p2.r) / std::max((int) p2.g, 1);
-	double p2_RtoB = (128.0 - p2.r) / std::max((int) p2.b, 1);
-	double p2_GtoB = (128.0 - p2.g) / std::max((int) p2.b, 1);
+	double p2_GtoR = (1.0 * p2.g) / std::max((int) p2.r, 1);
+	double p2_BtoR = (1.0 * p2.b) / std::max((int) p2.r, 1);
+	double p2_BtoG = (1.0 * p2.b) / std::max((int) p2.g, 1);
 
-	return sqrt(pow(p1_RtoG - p2_RtoG, 2.0) + 2 * pow(p1_RtoB - p2_RtoB, 2.0) + pow(p1_GtoB - p2_GtoB, 2.0));
+	return sqrt(pow(p1_GtoR - p2_GtoR, 2.0) + 2 * pow(p1_BtoR - p2_BtoR, 2.0) + pow(p1_BtoG - p2_BtoG, 2.0));
 }

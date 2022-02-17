@@ -120,6 +120,6 @@ std::string Utility::intToString(int x){
 
 std::string Utility::doubleToString(double x, int fixed_precision){
 	std::stringstream ss;
-	ss << std::setprecision(1) << std::fixed << x;
+	ss << std::setprecision(fixed_precision) << std::fixed << x;
 	return ss.str();
 }
