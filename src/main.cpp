@@ -29,7 +29,7 @@ typedef struct
 
 int main(int argc, char *argv[])
 {
-	std::cout << "LeastAverageImage Version 1.07" << std::endl << std::endl;
+	std::cout << "LeastAverageImage Version 1.08" << std::endl << std::endl;
 
 	std::string settingsFilenameAndPath;
 	if(argc < 2){
@@ -127,7 +127,7 @@ int main(int argc, char *argv[])
 	const int LAST_FRAME = std::stoi(opts_ini.atat("album_mode_last_frame"));
 	const int ALBUM_NUM_DIGITS = std::stoi(opts_ini.atat("album_mode_num_digits"));
 
-	if(LAST_FRAME <= FIRST_FRAME || FIRST_FRAME < 0){
+	if(!LIST_MODE && (LAST_FRAME <= FIRST_FRAME || FIRST_FRAME < 0)){
 		std::cerr << "Invalid frame numbers for album mode: " << FIRST_FRAME << " through " << LAST_FRAME << "\n";
 		exit(1);
 	}
