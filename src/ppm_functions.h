@@ -1,12 +1,13 @@
-#ifndef NETPBM
-#define NETPBM
+#ifndef PPM_FUNCTIONS
+#define PPM_FUNCTIONS
 
 #include <string>
 #include <utility>
+#include <iostream>
 
-// netpbm.h
-// Functions for reading and writing binary PBM, PGM, and PPM image files.
-// V2.2D
+// ppm_functions.h
+// Functions for reading and writing binary PPM image files.
+// V2.2E
 // Based on V2.2, 2013-10-19 Marc Pomplun + Marc's bicubic resampling functions sent by e-mail
 // Last updated 2022-02-17
 
@@ -17,6 +18,9 @@
 // Added readHeightAndWidth function -- pretty much just readImage without the actual image reading.
 // Added Marc's bicubic resampling function (with my CLAMP() definition)
 // Removed functions pertaining to matrices, shapes, and lines
+// Changed the C file to a C++ file (although the bulk of the code is still C style)
+// Renamed from NETPBM to PPM_Functions
+// Added resize_and_crop function
 
 #define SQR(x) ((x)*(x))
 #define PI 3.14159265358979323846
@@ -55,7 +59,7 @@ Image createImage(int height, int width);
 void deleteImage(Image img);
 
 // Read an image from a file and allocate the required heap memory for it.
-// Notice that only binary Netpbm files are supported. Regardless of the
+// Notice that only PPM files are supported. Regardless of the
 // file type, all fields r, g, b, and i are filled in, with values from 0 to 255.
 Image readImage(const char *filename);
 Image readImage(const std::string filename);
@@ -71,6 +75,7 @@ void writeImage(Image img, const std::string filename);
 // If they are set to INVERT, the corresponding channels are inverted, i.e., set to 255 minus their original value
 void setPixel(Image img, int vPos, int hPos, int r, int g, int b);
 
+//Copy a Pixel
 void copyPixel(Pixel* to, Pixel from);
 void copyPixel(Pixel* to, Pixel* from);
 
@@ -82,4 +87,8 @@ Image resampleBicubic(Image inImage, int vTarget, int hTarget);
 //Read in the height and width information only and return it in a pair, with height first, width second.
 std::pair<int, int> readHeightAndWidth(const std::string filename);
 
-#endif // NETPBM
+//Creates a copy of the image img, resized to the given height or width, whichever is a greater percent enlargement,
+//then crops to match the exact dimensions. Returns the copy and only deletes the original if delete_original is true
+Image resize_and_crop(Image img, const int OUTPUT_HEIGHT, const int OUTPUT_WIDTH, bool delete_original);
+
+#endif // PPM_FUNCTIONS

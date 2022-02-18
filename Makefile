@@ -8,9 +8,9 @@ FLAGS=-std=c++11 -flto
 FOLDER_OBJ=object_files
 FOLDER_PROGRAM=program
 #The objects that will be built from C++ style code
-OBJ_CPP=$(FOLDER_OBJ)/differencefunctions.o $(FOLDER_OBJ)/iniparser.o $(FOLDER_OBJ)/main.o $(FOLDER_OBJ)/utility.o
+OBJ_CPP=$(FOLDER_OBJ)/differencefunctions.o $(FOLDER_OBJ)/iniparser.o $(FOLDER_OBJ)/main.o $(FOLDER_OBJ)/utility.o $(FOLDER_OBJ)/ppm_functions.o
 #The objects that will be built from C style code.
-OBJ_C=$(FOLDER_OBJ)/ini.o $(FOLDER_OBJ)/netpbm.o
+OBJ_C=$(FOLDER_OBJ)/ini.o
 
 $(FOLDER_PROGRAM)/lai : $(OBJ_CPP) $(OBJ_C)
 		$(CC) -o $(FOLDER_PROGRAM)/lai $(FLAGS) $(OBJ_CPP) $(OBJ_C)

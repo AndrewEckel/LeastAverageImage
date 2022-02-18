@@ -5,7 +5,7 @@
 #include <cmath>
 #include <string>
 
-#include "netpbm.h"
+#include "ppm_functions.h"
 
 class DifferenceFunctions{
 private:

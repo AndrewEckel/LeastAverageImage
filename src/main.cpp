@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <algorithm>
 
-#include "netpbm.h"
+#include "ppm_functions.h"
 #include "differencefunctions.h"
 #include "utility.h"
 #include "iniparser.h"
@@ -27,68 +27,9 @@ typedef struct
 	std::vector<std::vector<std::vector<double > > > biggestDifferences;
 } DifferenceRecord;
 
-Image resize_and_crop(Image img, const int OUTPUT_HEIGHT, const int OUTPUT_WIDTH, bool delete_original){
-	if(img.height == OUTPUT_HEIGHT && img.width == OUTPUT_WIDTH){
-		return img;
-	}
-
-	//1. Resizing
-	double size_multiplier_min_height = 1.0 * OUTPUT_HEIGHT / img.height;
-	double size_multiplier_min_width = 1.0 * OUTPUT_WIDTH / img.width;
-	double size_multiplier = std::max(size_multiplier_min_height, size_multiplier_min_width);
-	int resize_height = round(size_multiplier * img.height);
-	int resize_width = round(size_multiplier * img.width);
-	if(resize_height < OUTPUT_HEIGHT){
-		while(resize_height < OUTPUT_HEIGHT){
-			++resize_height; //this seems to never happen
-		}
-	}
-	if(resize_width < OUTPUT_WIDTH){
-		while(resize_width < OUTPUT_WIDTH){
-			++resize_width; //this seems to never happen
-		}
-	}
-	Image resized_image = resampleBicubic(img, resize_height, resize_width);
-
-	//2. Cropping.
-	Image cropped_image = createImage(OUTPUT_HEIGHT, OUTPUT_WIDTH);
-	int i_first, i_last, j_first, j_last;
-	if(resized_image.height == OUTPUT_HEIGHT){
-		i_first = 0;
-		i_last = OUTPUT_HEIGHT - 1;
-		j_first = floor((resized_image.width / 2.0) - (OUTPUT_WIDTH / 2.0));
-		j_last = j_first + OUTPUT_WIDTH - 1;
-	}
-	else if (resized_image.width == OUTPUT_WIDTH){
-		i_first = floor((resized_image.height / 2.0) - (OUTPUT_HEIGHT / 2.0));
-		i_last = i_first + OUTPUT_HEIGHT - 1;
-		j_first = 0;
-		j_last = OUTPUT_WIDTH - 1;
-	}
-	else{
-		std::cerr << "ERROR: Neither height nor width is a match after resizing in resize_and_crop()\n";
-		deleteImage(resized_image);
-		deleteImage(img);
-		exit(1);
-	}
-	for(int i = i_first; i <= i_last; ++i){
-		for(int j = j_first; j <= j_last; ++j){
-			copyPixel(&cropped_image.map[i - i_first][j - j_first], &resized_image.map[i][j]);
-		}
-	}
-
-	deleteImage(resized_image);
-	if(delete_original){
-		deleteImage(img);
-	}
-	return cropped_image;
-}
-
-
 int main(int argc, char *argv[])
 {
-	std::cout << "LeastAverageImage Version 1.06" << std::endl << std::endl;
-	//std::cout << "32 bit version\n";
+	std::cout << "LeastAverageImage Version 1.07" << std::endl << std::endl;
 
 	std::string settingsFilenameAndPath;
 	if(argc < 2){
