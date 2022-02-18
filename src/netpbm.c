@@ -43,55 +43,6 @@ void deleteImage(Image img)
 	free(img.map);
 }
 
-// Create a new matrix of the given size and fill it with zeroes.
-// When you don't need the matrix anymore, don't forget to free its memory using deleteMatrix.
-Matrix createMatrix(int height, int width)
-{
-	int i, j;
-	Matrix mx;
-
-	mx.map = (double **) malloc(sizeof(double *)*height);
-	for (i = 0; i < height; i++)
-	{
-		mx.map[i] = (double *) malloc(sizeof(double)*width);
-		for (j = 0; j < width; j++)
-			mx.map[i][j] = 0.0;
-	}
-	mx.height = height;
-	mx.width = width;
-	return mx;
-}
-
-// Create a new matrix of the given size and fill it with content of 2D double array.
-// Call this function with a pointer to the first element of the array, e.g., &a[0][0].
-// When you don't need the matrix anymore, don't forget to free its memory using deleteMatrix.
-Matrix createMatrixFromArray(double *entry, int height, int width)
-{
-	int i, j;
-	Matrix mx;
-
-	mx.map = (double **) malloc(sizeof(double *)*height);
-	for (i = 0; i < height; i++)
-	{
-		mx.map[i] = (double *) malloc(sizeof(double)*width);
-		for (j = 0; j < width; j++)
-			mx.map[i][j] = *(entry++);
-	}
-	mx.height = height;
-	mx.width = width;
-	return mx;
-}
-
-// Delete a previously created matrix and free its allocated memory on the heap. 
-void deleteMatrix(Matrix mx)
-{
-	int m;
-	
-	for (m = 0; m < mx.height; m++)
-		free(mx.map[m]);
-	free(mx.map);
-}
-
 // Read an image from a file and allocate the required heap memory for it.
 // Notice that only binary Netpbm files are supported. Regardless of the
 // file type, all fields r, g, b, and i are filled in, with values from 0 to 255. 
@@ -229,64 +180,6 @@ void writeImage(Image img, const std::string filename)
 	return writeImage(img, filename.c_str());
 }
 
-
-// Convert the intensity components of an image into a matrix of identical size.
-Matrix image2Matrix(Image img)
-{
-	int m, n;
-	Matrix result = createMatrix(img.height, img.width);
-
-	for (m = 0; m < img.height; m++)
-		for (n = 0; n < img.width; n++)
-			result.map[m][n] = (double) (1.0 * (img.map[m][n].r + img.map[m][n].g + img.map[m][n].b) / 3.0);
-	return result;
-}
-
-// Convert a matrix into an image with corresponding, r, g, b, and i components and size.
-// If scale == 0 then values remain unchanged but if they are below 0 or above 255, they 
-// are set to 0 or 255, respectively.
-// If scale != 0 the values are scaled so that minimum value is zero and maximum is 255.
-// Setting the gamma value allows for exponential scaling, with gamma == 1.0 enabling
-// linear scaling.
-Image matrix2Image(Matrix mx, int scale, double gamma)
-{
-	int m, n, intValue;
-	double dblValue, minVal = DBL_MAX, maxVal = -DBL_MAX;
-	Image result = createImage(mx.height, mx.width);
-
-	if (scale)
-	{
-		for (m = 0; m < mx.height; m++)
-			for (n = 0; n < mx.width; n++)
-			{
-				dblValue = mx.map[m][n];
-				if (dblValue < minVal)
-					minVal = dblValue;
-				else if (dblValue > maxVal)
-					maxVal = dblValue;
-			}
-		if (maxVal - minVal < 1e-10)
-			maxVal += 1.0;
-	}
-
-	minVal = 0.0;
-	for (m = 0; m < mx.height; m++)
-		for (n = 0; n < mx.width; n++)
-		{
-			dblValue = mx.map[m][n];
-			if (scale)
-				intValue = (int) (255.0*pow((dblValue - minVal)/(maxVal - minVal), gamma) + 0.5);
-			else
-				intValue = (int) mx.map[m][n];
-			if (intValue < 0)
-				intValue = 0;
-			else if (intValue > 255)
-				intValue = 255;
-			result.map[m][n].r = result.map[m][n].g = result.map[m][n].b = intValue;
-		}
-	return result;
-}
-
 // Set color for pixel (vPos, hPos) in image img.
 // If r, g, b, or i are set to NO_CHANGE, the corresponding color channels are left unchanged in img.
 // If they are set to INVERT, the corresponding channels are inverted, i.e., set to 255 minus their original value
@@ -308,141 +201,6 @@ void setPixel(Image img, int vPos, int hPos, int r, int g, int b)
 			img.map[vPos][hPos].b = 255 - img.map[vPos][hPos].b;
 		else if (b >= 0 && b <= 255)
 			img.map[vPos][hPos].b = b;
-	}
-}
-
-// Draw filled ellipse in image img centered at (vCenter, hCenter) with radii vRadius and hRadius. 
-// Radius (0, 0) will draw an individual pixel. For setting the r, g, b, and i color values, see setPixel function.
-void filledEllipse(Image img, int vCenter, int hCenter, int vRadius, int hRadius, int r, int g, int b)
-{
-	int m, n, hSpan;
-	if (vRadius == 0 && hRadius == 0)
-		setPixel(img, vCenter, hCenter, r, g, b);
-	else
-	{
-		for (m = -vRadius; m <= vRadius; m++)
-		{
-			if (vRadius == 0)
-				hSpan = hRadius;
-			else
-				hSpan = (int) ((double) hRadius*sqrt(1.0 - SQR((double) m/(double) vRadius)) + 0.5);
-			for (n = -hSpan; n <= hSpan; n++)
-				setPixel(img, vCenter + m, hCenter + n, r, g, b);
-		}
-	}
-}
-
-// Draw filled rectangle in image img with opposite edges (v1, h1) and (v2, h2).
-// For setting the r, g, b, and i color values, see setPixel function.
-void filledRectangle(Image img, int v1, int h1, int v2, int h2, int r, int g, int b)
-{
-	int m, n, m1 = v1, n1 = h1, m2 = v2, n2 = h2;
-	
-	if (v1 > v2)
-	{
-		m1 = v2;
-		m2 = v1;
-	}
-	if (h1 > h2)
-	{
-		n1 = h2;
-		n2 = h1;
-	}
-	for (m = m1; m <= m2; m++)
-		for (n = n1; n <= n2; n++)
-			setPixel(img, m, n, r, g, b);
-}
-
-// Draw straight line in image img between (v1, h1) and (v2, h2) with a given width, dash pattern, and color. 
-// Width 0 indicates single-pixel width. The inputs dash and gap determine the length in pixels of the dashes 
-// and the gaps between them, resp. Use 0 for either input to draw a solid line.
-// For setting the r, g, b, and i color values, see setPixel function.
-void line(Image img, int v1, int h1, int v2, int h2, int width, int dash, int gap, int r, int g, int b)
-{
-	int h, v, direction, distance = (int) sqrt((double) SQR(v2 - v1) + SQR(h2 - h1)), distanceCovered;
-	double slope;
-
-	if (v1 == v2 && h1 == h2)
-	{
-		filledEllipse(img, v1, h1, width, width, r, g, b);
-		return;
-	}
-
-	if (abs(h2 - h1) > abs(v2 - v1))
-	{
-		slope = (double) (v2 - v1)/(double) (h2 - h1);
-		direction = (h2 > h1)? 1:-1;
-		for (h = h1; h != h2 + direction; h += direction)
-		{
-			v = v1 + (int) (slope*(double) (h - h1) + 0.5);
-			distanceCovered = (int) sqrt((double) (SQR(h - h1) + SQR(v - v1)));
-			if (dash*gap == 0 || distanceCovered%(dash + gap) < dash || (distance%(dash + gap) >= dash && distanceCovered > distance - distance%(dash + gap)))
-				filledEllipse(img, v, h, width, width, r, g, b);
-		}
-	}
-	else
-	{
-		slope = (double) (h2 - h1)/(double) (v2 - v1);
-		direction = (v2 > v1)? 1:-1;
-		for (v = v1; v != v2 + direction; v += direction)
-		{
-			h = h1 + (int) (slope*(double) (v - v1) + 0.5);
-			distanceCovered = (int) sqrt((double) (SQR(h - h1) + SQR(v - v1)));
-			if (dash*gap == 0 || distanceCovered%(dash + gap) < dash || (distance%(dash + gap) >= dash && distanceCovered > distance - distance%(dash + gap)))
-				filledEllipse(img, v, h, width, width, r, g, b);
-		}
-	}
-}
-
-// Draw rectangle in image img with opposite corners (v1, h1) and (v2, h2) with a given width, dash pattern, and color. 
-// Inputs are otherwise identical to the line function.
-void rectangle(Image img, int v1, int h1, int v2, int h2, int width, int dash, int gap, int r, int g, int b)
-{
-	line(img, v1, h1, v1, h2, width, dash, gap, r, g, b);
-	line(img, v1, h2, v2, h2, width, dash, gap, r, g, b);
-	line(img, v2, h2, v2, h1, width, dash, gap, r, g, b);
-	line(img, v2, h1, v1, h1, width, dash, gap, r, g, b);
-}
-
-// Draw ellipse in image img centered at (vCenter, hCenter) and radii (vRadius, hRadius) with a given width, dash pattern, and color. 
-// Width 0 indicates single-pixel width. The inputs dash and gap determine the length in pixels of the dashes 
-// and the gaps between them, resp. Use 0 for either input to draw a solid line.
-// For setting the r, g, b, and i color values, see setPixel function.
-void ellipse(Image img, int vCenter, int hCenter, int vRadius, int hRadius, int width, int dash, int gap, int r, int g, int b)
-{
-	int v, h, last_v = -100, last_h = -100, secondlast_v = -100, secondlast_h = -100, last_shown = 0, distanceCovered = 0;
-	double alpha, stepsize = PI/2.0/(double) (vRadius + hRadius);
-
-	for (alpha = 0.0; alpha < 2.0*PI; alpha += stepsize)
-	{
-		v = vCenter + (int) ((double) vRadius*sin(alpha) + 0.5);
-		h = hCenter + (int) ((double) hRadius*cos(alpha) + 0.5);
-		if (v != last_v || h != last_h)
-		{
-			if (abs(v - secondlast_v) <= 1 && abs(h - secondlast_h) <= 1)
-			{
-				if (dash*gap == 0 || distanceCovered%(dash + gap) < dash)
-					filledEllipse(img, v, h, width, width, r, g, b);
-				secondlast_v = -1;
-				secondlast_h = -1;
-				last_shown = 1;
-				distanceCovered++;
-			}
-			else
-			{
-				if (!last_shown)
-				{
-					if ((dash*gap == 0 || distanceCovered%(dash + gap) < dash) && last_v > -100)
-						filledEllipse(img, last_v, last_h, width, width, r, g, b);
-					distanceCovered++;
-				}
-				secondlast_v = last_v;
-				secondlast_h = last_h;
-				last_shown = 0;
-			}
-			last_v = v;
-			last_h = h;
-		}
 	}
 }
 
@@ -468,7 +226,6 @@ double c(double s, int n)
     case 3: return   1.0/6.0 * s * s * s -1.0/2.0 * s * s + 1.0/3.0 * s;
   }
 }
-
 
 // Rescale a color image using bicubic interpolation so that the new image size is vTarget by hTarget pixels.
 Image resampleBicubic(Image inImage, int vTarget, int hTarget)

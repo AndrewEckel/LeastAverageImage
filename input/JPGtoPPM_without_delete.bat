@@ -1,0 +1,1 @@
+for %%i in (*.jpg) do convert "%%~ni.jpg" "%%~ni.ppm"

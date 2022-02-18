@@ -1,4 +1,5 @@
-// A hello world program in C++
+// LeastAverageImage
+// Andrew Eckel
 
 #include <iostream>
 #include <fstream>
@@ -86,7 +87,7 @@ Image resize_and_crop(Image img, const int OUTPUT_HEIGHT, const int OUTPUT_WIDTH
 
 int main(int argc, char *argv[])
 {
-	std::cout << "LeastAverageImage Version 1.05" << std::endl << std::endl;
+	std::cout << "LeastAverageImage Version 1.06" << std::endl << std::endl;
 	//std::cout << "32 bit version\n";
 
 	std::string settingsFilenameAndPath;
@@ -297,10 +298,6 @@ int main(int argc, char *argv[])
 	}
 	else{
 		std::cout << "\nBeginning averaging phase. First image should take the longest." << std::endl;
-		//Only one option for averaging: mean average
-		//Room for improvement: Is there any efficient algorithm for median average with reasonable memory usage? It could be a fun second option.
-		//Look into the question here: https://stackoverflow.com/questions/3372006/incremental-median-computation-with-max-memory-efficiency
-		//This would require a variation of readImage() that can retrieve a particular pixel without reading in the entire image.
 		std::vector<std::vector<std::vector< unsigned long long > > > totals;
 		
 		//First image
@@ -395,7 +392,7 @@ int main(int argc, char *argv[])
 		drs.push_back(dr);
 	}
 	if(DO_EXPERIMENT){
-		std::cout << "Experiment Difference Function : " << DifferenceFunctions::NAME_OF_CURRENT_EXPERIMENT_DIFFERENCE_FUNCTION << "\n";
+		std::cout << "Including the Experiment Difference Function : " << DifferenceFunctions::NAME_OF_CURRENT_EXPERIMENT_DIFFERENCE_FUNCTION << "\n";
 		DifferenceRecord dr;
 		dr.name = "Experiment001";
 		dr.difference_function = DifferenceFunctions::difference_Experiment;
@@ -466,6 +463,7 @@ int main(int argc, char *argv[])
 	std::cout << "\nBeginning output file creation phase." << std::endl;
 
 	bool use_tag_as_entire_filename = false;
+	bool printed_all_pixels_equal_warning = false;
 	if(LIST_MODE && drs.size() == 1 && rankingsToSave.size() == 1 && powersOfScore.size() == 1){
 		use_tag_as_entire_filename = true;
 	}
@@ -489,7 +487,10 @@ int main(int argc, char *argv[])
 							totalScore += pow(drs[drs_index].biggestDifferences[i][j][k], current_power);
 						}
 						if(totalScore <= 0.0 && !HIDE_WARNINGS){
-							std::cout << "WARNING: All pixels at position " << i << ", " << j << " are equal to the average, for " << drs[drs_index].name << "." << std::endl;
+							if(!printed_all_pixels_equal_warning){
+								std::cout << "WARNING: All pixels at position " << i << ", " << j << " are equal to the average, for " << drs[drs_index].name << "." << std::endl;
+								printed_all_pixels_equal_warning = true;
+							}
 							copyPixel(&result_img.map[i][j], &meanAverageImage.map[i][j]);
 						}
 						else{
