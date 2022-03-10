@@ -19,6 +19,7 @@ public:
 	static std::string intToString(int x, size_t numberOfDigits);
 	static std::string intToString(int x);
 	static std::string doubleToString(double x, int fixed_precision);
+	static std::string trim(std::string s);
 };
 
 #endif //UTILITY_H

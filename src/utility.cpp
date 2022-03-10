@@ -123,3 +123,24 @@ std::string Utility::doubleToString(double x, int fixed_precision){
 	ss << std::setprecision(fixed_precision) << std::fixed << x;
 	return ss.str();
 }
+
+std::string Utility::trim(std::string s){
+	//Return a copy of string s with whitespace trimmed from both ends
+
+	//i will point to the first character of s that will appear in the output
+	int i = 0;
+	while(i < s.length() && std::isspace(s[i])){
+		++i;
+	}
+	if(i == s.length()){
+		//s was all whitespace or a null string
+		return "";
+	}
+	//j will point to the last character of s that will appear in the output
+	int j = s.length() - 1;
+	while(j > i && std::isspace(s[j])){
+		--j;
+	}
+
+	return s.substr(i, j - i + 1);
+}

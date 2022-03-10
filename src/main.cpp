@@ -29,7 +29,7 @@ typedef struct
 
 int main(int argc, char *argv[])
 {
-	std::cout << "LeastAverageImage Version 1.08" << std::endl << std::endl;
+	std::cout << "LeastAverageImage Version 1.09" << std::endl << std::endl;
 
 	std::string settingsFilenameAndPath;
 	if(argc < 2){
@@ -171,8 +171,9 @@ int main(int argc, char *argv[])
 		//Input filenames: Every non-blank line after "[list]" in the settings file
 		std::ifstream listfile(settingsFilenameAndPath);
 		std::string line = "";
-		while(std::getline(listfile, line) && line != "[list]"){ }
+		while(std::getline(listfile, line) && line != "[list]" && line != "[list]\r"){ }
 		while(std::getline(listfile, line)){
+			line = Utility::trim(line);
 			if(line.length() > 0){
 				if(USE_ALBUM_INPUT_PATH_FOR_LIST_MODE){
 					inputFilenames.push_back(ALBUM_INPUT_PATH + line);

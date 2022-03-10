@@ -224,7 +224,7 @@ double c(double s, int n)
     case 0: return - 1.0/6.0 * s * s * s + s * s - 11.0/6.0 * s + 1.0;
     case 1: return   1.0/2.0 * s * s * s - 5.0/2.0 * s * s + 3.0 * s;
     case 2: return - 1.0/2.0 * s * s * s + 2.0 * s * s - 3.0/2.0 * s;
-    case 3: return   1.0/6.0 * s * s * s -1.0/2.0 * s * s + 1.0/3.0 * s;
+    default: return   1.0/6.0 * s * s * s -1.0/2.0 * s * s + 1.0/3.0 * s;
   }
 }
 
@@ -250,9 +250,8 @@ Image resampleBicubic(Image inImage, int vTarget, int hTarget)
             rValue = 0.0;
             gValue = 0.0;
             bValue = 0.0;
-            for (k = 0; k < 4; k++)
-                for (l = 0; l < 4; l++)
-                {
+            for (k = 0; k < 4; k++){
+                for (l = 0; l < 4; l++){
                     k_pixel = MIN(inImage.height - 1, MAX(0, i_offset + k));
                     l_pixel = MIN(inImage.width - 1, MAX(0, j_offset + l));
                     rValue += (double) inImage.map[k_pixel][l_pixel].r*c(i_relpos, k)*c(j_relpos, l);
@@ -262,6 +261,7 @@ Image resampleBicubic(Image inImage, int vTarget, int hTarget)
                     outImage.map[i][j].g = CLAMP((int) (gValue + 0.5));
                     outImage.map[i][j].b = CLAMP((int) (bValue + 0.5));
                 }
+            }
         }
     }
     return outImage;
