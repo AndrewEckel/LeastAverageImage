@@ -29,7 +29,7 @@ typedef struct
 
 int main(int argc, char *argv[])
 {
-	std::cout << "LeastAverageImage Version 1.09" << std::endl << std::endl;
+	std::cout << "LeastAverageImage Version 1.10" << std::endl << std::endl;
 
 	std::string settingsFilenameAndPath;
 	if(argc < 2){
@@ -44,7 +44,6 @@ int main(int argc, char *argv[])
 	//General settings
 	const std::string OUTPUT_PATH = Utility::endWithSlash(opts_ini.atat("general_output_path"));
 	const bool INVERT_SCORES = Utility::stob(opts_ini.atat("general_invert_scores"));
-	const bool HIDE_WARNINGS = Utility::stob(opts_ini.atat("general_hide_warnings"));
 	const bool SAVE_AVERAGE = Utility::stob(opts_ini.atat("general_save_average"));
 
 	const std::string split_chars = ",";
@@ -174,7 +173,7 @@ int main(int argc, char *argv[])
 		while(std::getline(listfile, line) && line != "[list]" && line != "[list]\r"){ }
 		while(std::getline(listfile, line)){
 			line = Utility::trim(line);
-			if(line.length() > 0){
+			if(line.length() > 0 && line[0] != '#'){ //ignore blank lines and comments beginning with #
 				if(USE_ALBUM_INPUT_PATH_FOR_LIST_MODE){
 					inputFilenames.push_back(ALBUM_INPUT_PATH + line);
 				}
@@ -428,7 +427,7 @@ int main(int argc, char *argv[])
 						for(int k = 0; k < num_pixels_to_rank_this_round; ++k){
 							totalScore += pow(drs[drs_index].biggestDifferences[i][j][k], current_power);
 						}
-						if(totalScore <= 0.0 && !HIDE_WARNINGS){
+						if(totalScore <= 0.0){
 							if(!printed_all_pixels_equal_warning){
 								std::cout << "WARNING: All pixels at position " << i << ", " << j << " are equal to the average, for " << drs[drs_index].name << "." << std::endl;
 								printed_all_pixels_equal_warning = true;
