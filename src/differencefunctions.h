@@ -1,3 +1,10 @@
+// LeastAverageImage
+// Andrew Eckel
+// differencefunctions.h
+
+// LeastAverageImage is released under the Simplified BSD License,
+// which is duplicated at the bottom of main.cpp
+
 #ifndef DIFFERENCEFUNCTIONS_H
 #define DIFFERENCEFUNCTIONS_H
 

@@ -1,4 +1,5 @@
-// ppm_functions.c 
+// ppm_functions.c
+// Marc Pomplun
 // Functions for reading and writing binary PPM image files.
 // See ppm_functions.h for details
 

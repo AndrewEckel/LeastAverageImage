@@ -1,12 +1,11 @@
-/* Part of Ben Hoyt's INIH project https://github.com/benhoyt/inih */
+/*
+Part of Ben Hoyt's INIH project
+inih -- simple .INI file parser
 
-/* inih -- simple .INI file parser
+inih is released under the New BSD license, which is duplicated at the bottom of ini.h
 
-inih is released under the New BSD license. Go to the project
-home page for more info:
-
+Go to the project home page for more info:
 https://github.com/benhoyt/inih
-
 */
 
 #if defined(_MSC_VER) && !defined(_CRT_SECURE_NO_WARNINGS)

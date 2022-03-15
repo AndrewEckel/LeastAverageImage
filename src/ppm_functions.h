@@ -6,12 +6,13 @@
 #include <iostream>
 
 // ppm_functions.h
+// Marc Pomplun
 // Functions for reading and writing binary PPM image files.
 // V2.2E
 // Based on V2.2, 2013-10-19 Marc Pomplun + Marc's bicubic resampling functions sent by e-mail
 // Last updated 2022-02-17
 
-// Andrew's changes:
+// Andrew's changes for LeastAverageImage:
 // This version has the "i" channel removed. It is more efficient for PPM files but it no longer supports PBM, PGM.
 // It also has versions of functions that accept C++ std::strings instead of C-style string literals.
 // Added copyPixel functions

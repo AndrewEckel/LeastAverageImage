@@ -1,5 +1,12 @@
-/* Part of Ben Hoyt's INIH project https://github.com/benhoyt/inih */
-/* Function "atat" added by Andrew Eckel 2020-05-11 */
+/*
+Part of Ben Hoyt's INIH project
+Function "atat" added by Andrew Eckel 2020-05-11
+
+inih is released under the New BSD license, which is duplicated at the bottom of ini.h
+
+Go to the project home page for more info:
+https://github.com/benhoyt/inih
+*/
 
 #include "iniparser.h"
 

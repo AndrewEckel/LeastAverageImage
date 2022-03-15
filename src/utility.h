@@ -1,3 +1,10 @@
+// LeastAverageImage
+// Andrew Eckel
+// utility.h
+
+// LeastAverageImage is released under the Simplified BSD License,
+// which is duplicated at the bottom of main.cpp
+
 #ifndef UTILITY_H
 #define UTILITY_H
 

@@ -1,3 +1,10 @@
+// LeastAverageImage
+// Andrew Eckel
+// utility.cpp
+
+// LeastAverageImage is released under the Simplified BSD License,
+// which is duplicated at the bottom of main.cpp
+
 #include "utility.h"
 
 std::string Utility::endWithSlash(std::string s) {

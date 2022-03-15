@@ -1,3 +1,10 @@
+// LeastAverageImage
+// Andrew Eckel
+// differencefunctions.cpp
+
+// LeastAverageImage is released under the Simplified BSD License,
+// which is duplicated at the bottom of main.cpp
+
 #include "differencefunctions.h"
 
 //DifferenceFunctions note:
@@ -7,12 +14,11 @@
 
 //helper function for difference_PerceivedBrightness
 double DifferenceFunctions::perceived_Brightness(Pixel color){
-  //possible range: 0 to 255 (really!)
+  //possible range: 0 to 255
   //given a Pixel, returns the perceived brightness of the color
   //on a scale from 0 to 255.
 
-  //The single line of code here is by me (Andrew Eckel) but the formula used
-  //was created by Darel Rex Finley, based on his attempts to
+  //The code is based on the formula created by Darel Rex Finley, based on his attempts to
   //reverse-engineer Photoshop’s RGB-to-Greyscale mode conversion.
   //http://alienryderflex.com/hsp.html
 
@@ -56,7 +62,7 @@ double DifferenceFunctions::difference_ColorRatio(Pixel p1, Pixel p2){
 	// double p2_RtoG = (1.0 * p2.r) - p2.g;
 	// double p2_RtoB = (1.0 * p2.r) - p2.b;
 	// double p2_GtoB = (1.0 * p2.g) - p2.b;
-
+	
 
 	return sqrt(pow(p1_RtoG - p2_RtoG, 2.0) + 2 * pow(p1_RtoB - p2_RtoB, 2.0) + pow(p1_GtoB - p2_GtoB, 2.0)); //original
 	//return sqrt(pow(p1_RtoG - p2_RtoG, 2.0) + 2 * pow(p1_RtoB - p2_RtoB, 2.0) + pow(p1_GtoB - p2_GtoB, 2.0)); //green counts twice
