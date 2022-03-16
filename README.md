@@ -1,5 +1,5 @@
 # LeastAverageImage
-Given a set of images, LeastAverageImage creates the least average -- the opposite of the average.
+Given a set of images, LeastAverageImage generates the least average -- the opposite of the average.
 
 ![alt text](https://www.AndrewEckel.com/LeastAverageImage/airplane009_aaaa.jpg)
 
