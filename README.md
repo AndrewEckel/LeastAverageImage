@@ -70,6 +70,8 @@ The included sample INI files have notes on the meaning of all the options.
 
 LeastAverageImage is a single-threaded program.  For processing multiple sets of images on a computer with "n" logical cores, you may wish to run up to n instances of LeastAverageImage at a time.
 
-The amount of time each run takes depends on the number of input images, their dimensions, the number of difference functions included, and the highest value chosen for rankings_to_save. Remember, the area of an image is its width times its height, so if image A has double the height and width of image B, it's four times as big, meaning it would take LeastAverageImage four times as long to process!
+The amount of time each run takes depends on the number of input images, their dimensions, the number of difference functions included, and the highest value chosen for `rankings_to_save`. Remember, the area of an image is its width times its height, so if an image's dimensions are doubled, that makes it four times as big, meaning it would take LeastAverageImage four times as long to process!
 
-For Windows, users, batch files are included in the input and output folders for converting to and from PPM files.
+For Windows users, batch files are included in the input and output folders for converting to and from PPM files using ImageMagick:
+- `ImagestoPPM_without_delete.bat` converts all JPG/JPEG, TIF, HEIC, PNG, and WEBP files in the current folder to PPM.
+- `PPMtoTIF.bat` converts all PPM files in the current folder to TIF and also deletes the original PPM files unless their filenames end in `avg.ppm`.

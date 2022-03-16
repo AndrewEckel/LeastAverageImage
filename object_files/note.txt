@@ -1,1 +1,2 @@
 This is the folder where the .o files will go when you run make.
+If you're not compiling the source code yourself, you will not need this folder.
