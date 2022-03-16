@@ -15,10 +15,16 @@ You will also "pretty much need"
 
 ## Setting up on Windows
 
-A pre-compiled executable of LeastAverageImage for 64 bit Windows version 8 or later is hosted here:
-https://www.AndrewEckel.com/LeastAverageImage/
+### Not compiling
 
-If that doesn't work for you, here's how to compile from the source code.  LeastAverageImage does not have complex dependencies, so if you have a preferred Windows C++ compiler, use that.  Otherwise...
+Windows users can download a zip file with a 64 bit executable here:
+https://github.com/AndrewEckel/LeastAverageImage/releases
+
+### Compiling!
+
+Those who want to compile the code themselves should start by [cloning](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) the entire git repo.
+
+LeastAverageImage does not have complex dependencies, so if you have a preferred Windows C++ compiler, use that.  Otherwise...
 
 Install MinGW-w64 and add it to your Windows PATH by following the instructions here:
 
@@ -30,22 +36,26 @@ mingw32-make
 ```
 ## Testing on Windows
 
-After unzipping the pre-compiled program or compiling from the source code, navigate to the program directory using the Windows command line, and try running these two commands:
+After unzipping the program or compiling from the source code, navigate to the `program` directory using the Windows command line, and try running these two commands:
+
 ```
 lai
 lai ../input/list_mode_test.ini
 ```
+
 The first command should create 3 PPM files in the output directory, and the second should create an additional 33.
 
 ## Compiling and testing on a Mac or other UNIX-based OS
+
+Start by [cloning](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) the entire git repo.
 
 Open a Terminal window in the directory that holds the Makefile, and execute this command:
 ```
 make
 ```
-If you do not have g++ and/or make installed, you will be asked if you wish to install Xcode. (You do!)
+On a Mac, if you do not have `g++` and/or `make` installed, you will be asked if you wish to install Xcode. (Yes, you do!)
 
-After compiling, navigate to the program directory and try running these two commands:
+After compiling, navigate to the `program` directory and try running these two commands:
 ```
 ./lai
 ./lai ../input/list_mode_test.ini
@@ -54,8 +64,12 @@ The first command should create 3 PPM files in the output directory, and the sec
 
 ## Running LeastAverageImage
 
-LeastAverageImage accepts one command line argument, the name of a single INI settings file.  Without an argument, the program will default to ../input/settings.ini.
+LeastAverageImage accepts one command line argument, the name of a single INI settings file.  Without an argument, the program will default to `../input/settings.ini`.
 
 The included sample INI files have notes on the meaning of all the options.
 
 LeastAverageImage is a single-threaded program.  For processing multiple sets of images on a computer with "n" logical cores, you may wish to run up to n instances of LeastAverageImage at a time.
+
+The amount of time each run takes depends on the number of input images, their dimensions, the number of difference functions included, and the highest value chosen for rankings_to_save. Remember, the area of an image is its width times its height, so if image A has double the height and width of image B, it's four times as big, meaning it would take LeastAverageImage four times as long to process!
+
+For Windows, users, batch files are included in the input and output folders for converting to and from PPM files.
