@@ -77,3 +77,7 @@ The amount of time each run takes depends on the number of input images, their d
 For Windows users, batch files are included in the input and output folders for converting to and from PPM files using ImageMagick:
 - `ImagestoPPM_without_delete.bat` converts all JPG/JPEG, TIF, HEIC, PNG, and WEBP files in the current folder to PPM.
 - `PPMtoTIF.bat` converts all PPM files in the current folder to TIF and also deletes the original PPM files unless their filenames end in `avg.ppm`.
+
+## Sharing cool results
+
+If you make something cool with this program, please show me, and please let others know about LeastAverageImage!
