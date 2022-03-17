@@ -13,6 +13,8 @@ You will also "pretty much need"
 - A text editor that automatically color-codes INI files to make them easier to read, such as [Notepad++](https://notepad-plus-plus.org/downloads/) or [Sublime Text](https://www.sublimetext.com/)
 - A general image processing program to adjust the saturation, brightness, contrast, color balance, etc in your result images.  The more variation there is your input images, the more grey-looking your raw results will be.
 
+If you want to use images from video files as your input, you'll also need a way to convert the frames of the video into PPM images.  For Windows, I can recommend [VirtualDub](https://www.virtualdub.org/) for that.  (Convert to a series of Targa files using VirtualDub, then convert those to PPM using ImageMagick.  And of course, if you're converting a video file to a series of still images, you'll probably also need a separate hard drive to store them all.)
+
 ## Setting up on Windows
 
 ### Not compiling
