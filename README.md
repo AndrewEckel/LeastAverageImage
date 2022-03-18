@@ -7,7 +7,7 @@ More information about the program is here: https://www.AndrewEckel.com/LeastAve
 
 ## Requirements
 To use LeastAverageImage, you will need
-- [ImageMagick](https://imagemagick.org/): a free command line program you'll need to convert image files to and from the PPM format, the only format LeastAverageImage recognizes
+- [ImageMagick](https://imagemagick.org/): a free command line program you'll need to convert image files to and from the PPM format, the only format LeastAverageImage recognizes. Please select `Install legacy utilities (e.g. convert)` when installing.
 
 You will also "pretty much need"
 - A text editor that automatically color-codes INI files to make them easier to read, such as [Notepad++](https://notepad-plus-plus.org/downloads/) or [Sublime Text](https://www.sublimetext.com/)
@@ -46,6 +46,8 @@ lai ../input/list_mode_test.ini
 ```
 
 The first command should create 3 PPM files in the output directory, and the second should create an additional 33.
+
+You can use the Windows batch file in the `output` directory to convert the PPM files to TIF, but first you'll need to install ImageMagick and [add its location to your PATH](https://helpdeskgeek.com/windows-10/add-windows-path-environment-variable/).
 
 ## Compiling and testing on a Mac or other UNIX-based OS
 
