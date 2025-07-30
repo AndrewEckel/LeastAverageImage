@@ -1,7 +1,7 @@
 # LeastAverageImage
 Given a set of images, LeastAverageImage generates the least average -- the opposite of the average.
 
-![alt text](https://www.AndrewEckel.com/LeastAverageImage/airplane009_aaaa.jpg)
+![example of an image creates using LeastAverageImage](airplanes.jpg)
 
 More information about the program is here: https://www.AndrewEckel.com/LeastAverageImage/
 
